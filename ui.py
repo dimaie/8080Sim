@@ -173,8 +173,21 @@ class App(tk.Tk):
         left_frame.pack(side=tk.LEFT, fill=tk.Y)
 
         tk.Label(left_frame, text="Code", font=("Arial", 10, "bold")).pack(anchor="w")
-        self.code_text = tk.Text(left_frame, width=50, height=25, font=("Courier", 10), undo=True)
-        self.code_text.pack(fill=tk.BOTH, expand=True)
+        
+        editor_frame = tk.Frame(left_frame)
+        editor_frame.pack(fill=tk.BOTH, expand=True)
+        
+        self.gutter_canvas = tk.Canvas(editor_frame, width=20, bg="#f0f0f0", highlightthickness=0)
+        self.gutter_canvas.pack(side=tk.LEFT, fill=tk.Y)
+        self.gutter_canvas.bind("<Button-1>", self.on_gutter_click)
+        
+        self.code_text = tk.Text(editor_frame, width=50, height=25, font=("Courier", 10), undo=True)
+        self.code_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        
+        self.scrollbar = ttk.Scrollbar(editor_frame, orient="vertical", command=self.code_text.yview)
+        self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.code_text.config(yscrollcommand=self.on_text_scroll)
+        
         self.code_text.tag_configure("current_line", background="#b3d7ff")
         self.code_text.tag_configure("value_modified", background="#d2f8d2")
         self.code_text.tag_configure("modified_line", background="#ffeb99")
@@ -194,6 +207,7 @@ class App(tk.Tk):
         
         self.code_text.bind("<Double-Button-1>", self.on_toggle_breakpoint)
         self.code_text.bind("<<Modified>>", self.on_text_modified)
+        self.code_text.bind("<Configure>", lambda e: self.after_idle(self.update_gutter))
 
         tk.Label(left_frame, text="Labels", font=("Arial", 10, "bold")).pack(anchor="w", pady=(10, 0))
         
@@ -376,6 +390,19 @@ class App(tk.Tk):
                     self.code_text.tag_add(tag, f"{line}.{start_col}", f"{line}.{end_col}")
                     line_counters[line] = end_col
 
+    def on_text_scroll(self, *args):
+        self.scrollbar.set(*args)
+        self.update_gutter()
+
+    def update_gutter(self, event=None):
+        self.gutter_canvas.delete("all")
+        for bp in self.debugger.breakpoints:
+            info = self.code_text.dlineinfo(f"{bp}.0")
+            if info:
+                x, y, w, h, base = info
+                cy = y + h // 2
+                self.gutter_canvas.create_oval(4, cy - 4, 12, cy + 4, fill="#e51400", outline="#a00000")
+
     def on_text_modified(self, event):
         if self.code_text.edit_modified():
             self.debugger.is_dirty = True
@@ -388,13 +415,22 @@ class App(tk.Tk):
                 self.set_status_ready()
                 
             self.highlight_syntax()
+            self.after_idle(self.update_gutter)
                 
             self.code_text.edit_modified(False)
 
     def on_toggle_breakpoint(self, event):
         index = self.code_text.index(f"@{event.x},{event.y}")
         line_num = int(index.split('.')[0])
-        
+        self.toggle_breakpoint_ui(line_num)
+        return "break"
+
+    def on_gutter_click(self, event):
+        index = self.code_text.index(f"@0,{event.y}")
+        line_num = int(index.split('.')[0])
+        self.toggle_breakpoint_ui(line_num)
+
+    def toggle_breakpoint_ui(self, line_num):
         if self.debugger.is_dirty:
             self.compile_code(quiet=True)
             
@@ -403,10 +439,9 @@ class App(tk.Tk):
                 self.code_text.tag_add("breakpoint", f"{line_num}.0", f"{line_num}.0 lineend")
             else:
                 self.code_text.tag_remove("breakpoint", f"{line_num}.0", f"{line_num}.0 lineend")
+            self.update_gutter()
         else:
             self.set_status_fail("Breakpoints can only be set on executable commands.")
-            
-        return "break"
 
     def compile_code(self, quiet=False):
         try:
@@ -417,6 +452,8 @@ class App(tk.Tk):
             self.code_text.tag_remove("breakpoint", "1.0", tk.END)
             for bp in self.debugger.breakpoints:
                 self.code_text.tag_add("breakpoint", f"{bp}.0", f"{bp}.0 lineend")
+            
+            self.after_idle(self.update_gutter)
             
             if not quiet:
                 self.set_status_success()
@@ -597,6 +634,8 @@ class App(tk.Tk):
                 self.last_highlighted_entries.append(entry)
         except ValueError:
             pass # Ignore if ram start address is invalid
+            
+        self.after_idle(self.update_gutter)
 
     def populate_ram_table(self):
         try:
