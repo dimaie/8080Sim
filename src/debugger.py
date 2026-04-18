@@ -16,6 +16,7 @@ class Debugger:
         self.just_resumed = False
         self.last_modified_regs = set()
         self.last_modified_mem = set()
+        self.tokens = []
 
     def toggle_breakpoint(self, line_num):
         if line_num in self.line_to_addr:
@@ -29,19 +30,22 @@ class Debugger:
     def compile(self, prog_text):
         p = Parser()
         asm = Assembler()
-        source_lines = p.parse(prog_text)
-        mem, label_to_addr = asm.assemble(source_lines)
-        
-        self.addr_to_line = asm.addrToLine
-        self.line_to_addr = {line: addr for addr, line in self.addr_to_line.items()}
-        self.label_to_addr = label_to_addr
-        self.original_memory = list(mem)
-        
-        self.reset()
-        self.is_dirty = False
-        
-        # Validate existing breakpoints
-        self.breakpoints = {bp for bp in self.breakpoints if bp in self.line_to_addr}
+        try:
+            source_lines = p.parse(prog_text)
+            mem, label_to_addr = asm.assemble(source_lines)
+            
+            self.addr_to_line = asm.addrToLine
+            self.line_to_addr = {line: addr for addr, line in self.addr_to_line.items()}
+            self.label_to_addr = label_to_addr
+            self.original_memory = list(mem)
+            
+            self.reset()
+            self.is_dirty = False
+            
+            # Validate existing breakpoints
+            self.breakpoints = {bp for bp in self.breakpoints if bp in self.line_to_addr}
+        finally:
+            self.tokens = p.tokens
 
     def reset(self):
         self.memory = list(self.original_memory)

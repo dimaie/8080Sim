@@ -30,19 +30,28 @@ class Lexer:
             return None
 
         if self.buf[self.pos] == ';':
-            self._skipComment()
-
-        if self.pos >= len(self.buf):
-            return None
+            start = self.pos
+            endpos = self.pos + 1
+            while endpos < len(self.buf) and not self._isNewline(self.buf[endpos]):
+                endpos += 1
+            raw_val = self.buf[start:endpos]
+            tok = {
+                'name': 'COMMENT',
+                'value': raw_val,
+                'raw': raw_val,
+                'pos': self._position()
+            }
+            self.pos = endpos
+            return tok
 
         c = self.buf[self.pos]
         if self._isNewline(c):
-            tok = {'name': 'NEWLINE', 'value': c, 'pos': self._position()}
+            tok = {'name': 'NEWLINE', 'value': c, 'raw': c, 'pos': self._position()}
             self._skipNewlines()
             return tok
 
         if c in self._ops:
-            tok = {'name': c, 'value': c, 'pos': self._position()}
+            tok = {'name': c, 'value': c, 'raw': c, 'pos': self._position()}
             self.pos += 1
             return tok
         else:
@@ -58,18 +67,31 @@ class Lexer:
         while endpos < len(self.buf) and self._isAlphaNum(self.buf[endpos]):
             endpos += 1
 
+        raw_val = self.buf[self.pos:endpos]
         if endpos < len(self.buf) and self.buf[endpos] == ':':
+            raw_val += ':'
             tok = {
                 'name': 'LABEL',
                 'value': self.buf[self.pos:endpos],
+                'raw': raw_val,
                 'pos': self._position()
             }
             self.pos = endpos + 1
             return tok
         else:
+            val_lower = raw_val.lower()
+            is_number = False
+            if val_lower.endswith('h') and val_lower[:-1] and all(c in '0123456789abcdef' for c in val_lower[:-1]):
+                is_number = True
+            elif val_lower.endswith('b') and val_lower[:-1] and all(c in '01' for c in val_lower[:-1]):
+                is_number = True
+            elif val_lower.isdecimal():
+                is_number = True
+
             tok = {
-                'name': 'ID',
-                'value': self.buf[self.pos:endpos],
+                'name': 'NUMBER' if is_number else 'ID',
+                'value': raw_val,
+                'raw': raw_val,
                 'pos': self._position()
             }
             self.pos = endpos
@@ -85,6 +107,7 @@ class Lexer:
                 # We return it as a list of characters to mimic the JS Array structure 
                 # needed later by the `db` instruction in the Assembler.
                 'value': list(self.buf[self.pos + 1:end]),
+                'raw': self.buf[self.pos:end + 1],
                 'pos': self._position()
             }
             self.pos = end + 1
@@ -97,12 +120,6 @@ class Lexer:
                 self.pos += 1
             else:
                 break
-
-    def _skipComment(self):
-        endpos = self.pos + 1
-        while endpos < len(self.buf) and not self._isNewline(self.buf[endpos]):
-            endpos += 1
-        self.pos = endpos
 
     def _isNewline(self, c):
         return c == '\r' or c == '\n'
@@ -128,15 +145,27 @@ class Lexer:
 
 
 class Parser:
+    def __init__(self):
+        self.tokens = []
+
     def parse(self, s):
         result = []
         lexer = Lexer(s)
+        self.tokens = []
+
+        def get_next_tok():
+            while True:
+                tok = lexer.token()
+                if tok is not None:
+                    self.tokens.append(tok)
+                if tok is None or tok['name'] != 'COMMENT':
+                    return tok
 
         while True:
-            curTok = lexer.token()
+            curTok = get_next_tok()
 
             while curTok is not None and curTok['name'] == 'NEWLINE':
-                curTok = lexer.token()
+                curTok = get_next_tok()
 
             if curTok is None:
                 return result
@@ -144,7 +173,7 @@ class Parser:
             labelTok = None
             if curTok['name'] == 'LABEL':
                 labelTok = curTok
-                curTok = lexer.token()
+                curTok = get_next_tok()
 
             if curTok is None or curTok['name'] == 'NEWLINE':
                 result.append({
@@ -161,17 +190,17 @@ class Parser:
             idTok = curTok
             args = []
 
-            curTok = lexer.token()
+            curTok = get_next_tok()
 
             while curTok is not None and curTok['name'] != 'NEWLINE':
-                if curTok['name'] == 'ID' or curTok['name'] == 'STRING':
+                if curTok['name'] in ('ID', 'STRING', 'NUMBER'):
                     args.append(curTok['value'])
                 else:
                     self._parseError(curTok['pos'], f"want arg; got \"{curTok['value']}\"")
 
-                curTok = lexer.token()
+                curTok = get_next_tok()
                 if curTok is not None and curTok['name'] == ',':
-                    curTok = lexer.token()
+                    curTok = get_next_tok()
 
             result.append({
                 'label': labelTok['value'] if labelTok else None,

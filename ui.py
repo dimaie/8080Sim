@@ -176,6 +176,14 @@ class App(tk.Tk):
         self.code_text.tag_configure("modified_line", background="#ffeb99")
         self.code_text.tag_configure("breakpoint", background="#ffcccc")
         
+        # Syntax Highlighting Tags
+        self.code_text.tag_configure("syntax_comment", foreground="#008000") # Green
+        self.code_text.tag_configure("syntax_string", foreground="#a31515") # Brown
+        self.code_text.tag_configure("syntax_label", foreground="#800080") # Purple
+        self.code_text.tag_configure("syntax_instruction", foreground="#0000ff", font=("Courier", 10, "bold")) # Blue Bold
+        self.code_text.tag_configure("syntax_register", foreground="#0000a0") # Dark Blue
+        self.code_text.tag_configure("syntax_number", foreground="#ff8000") # Orange
+
         # Ensure execution markers are visible on top of everything
         self.code_text.tag_raise("current_line", "breakpoint")
         self.code_text.tag_raise("modified_line", "breakpoint")
@@ -328,6 +336,42 @@ class App(tk.Tk):
             pass
         self.update_ui()
 
+    def highlight_syntax(self):
+        for tag in ["syntax_comment", "syntax_string", "syntax_label", "syntax_instruction", "syntax_register", "syntax_number"]:
+            self.code_text.tag_remove(tag, "1.0", tk.END)
+
+        instructions = {'adc', 'add', 'aci', 'adi', 'ana', 'ani', 'call', 'cc', 'cnc', 'cnz', 'cm', 'cp', 'cpe', 'cpo', 'cz', 'cma', 'cmc', 'cmp', 'cpi', 'dad', 'db', 'dw', 'dcr', 'dcx', 'hlt', 'inr', 'inx', 'jc', 'jm', 'jmp', 'jnc', 'jnz', 'jp', 'jpe', 'jpo', 'jz', 'lda', 'ldax', 'lhld', 'lxi', 'mov', 'mvi', 'nop', 'ora', 'ori', 'pchl', 'pop', 'push', 'rc', 'ret', 'rnc', 'rnz', 'rm', 'rp', 'rpe', 'rpo', 'rz', 'ral', 'rar', 'rlc', 'rrc', 'sbb', 'sbi', 'shld', 'sphl', 'sta', 'stax', 'stc', 'sub', 'sui', 'xchg', 'xra', 'xri', 'xthl', 'org'}
+        registers = {'a', 'b', 'c', 'd', 'e', 'h', 'l', 'm', 'sp', 'psw', 'bc', 'de', 'hl'}
+
+        line_counters = {}
+        
+        for tok in self.debugger.tokens:
+            name = tok['name']
+            val = tok['value']
+            raw = tok['raw']
+            line = tok['pos'].line
+            
+            tag = None
+            if name == 'COMMENT': tag = 'syntax_comment'
+            elif name == 'STRING': tag = 'syntax_string'
+            elif name == 'LABEL': tag = 'syntax_label'
+            elif name == 'NUMBER': tag = 'syntax_number'
+            elif name == 'ID':
+                lower_val = val.lower()
+                if lower_val in instructions: tag = 'syntax_instruction'
+                elif lower_val in registers: tag = 'syntax_register'
+                    
+            if tag:
+                if line not in line_counters:
+                    line_counters[line] = 0
+                
+                line_text = self.code_text.get(f"{line}.0", f"{line}.end")
+                start_col = line_text.find(raw, line_counters[line])
+                if start_col != -1:
+                    end_col = start_col + len(raw)
+                    self.code_text.tag_add(tag, f"{line}.{start_col}", f"{line}.{end_col}")
+                    line_counters[line] = end_col
+
     def on_text_modified(self, event):
         if self.code_text.edit_modified():
             self.debugger.is_dirty = True
@@ -338,6 +382,8 @@ class App(tk.Tk):
             if self.compile_code(quiet=False):
                 self.update_ui()
                 self.set_status_ready()
+                
+            self.highlight_syntax()
                 
             self.code_text.edit_modified(False)
 
@@ -391,6 +437,7 @@ class App(tk.Tk):
         if self.debugger.is_dirty:
             if self.compile_code():
                 self.update_ui()
+            self.highlight_syntax()
         else:
             self.debugger.reset()
             self.set_status_ready()
