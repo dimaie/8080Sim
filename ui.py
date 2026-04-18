@@ -5,6 +5,7 @@ from tkinter import filedialog
 from src.debugger import Debugger
 from src.code_editor import CodeEditor
 from src.memory_panel import MemoryPanel, StackPanel
+from src.registers_panel import RegistersPanel
 
 class App(tk.Tk):
     def __init__(self):
@@ -12,11 +13,6 @@ class App(tk.Tk):
         self.title("js-8080-sim (Python Edition)")
         self.geometry("1100x800")
 
-        self.cpu_state_vars = {} # Maps reg name to tk.StringVar
-        self.cpu_state_entries = {} # Maps reg name to tk.Entry widget
-        self.flags_state_vars = {} # Maps flag name to tk.StringVar
-        self.flags_entries = {} # Maps flag name to tk.Entry widget
-        self.last_highlighted_entries = []
         self.animating = False
         self.memory_panels = []
         self.current_file = None
@@ -33,22 +29,34 @@ class App(tk.Tk):
         menubar = tk.Menu(self)
         
         self.file_menu = tk.Menu(menubar, tearoff=0)
-        self.file_menu.add_command(label="Open", command=self.on_open)
-        self.file_menu.add_command(label="Save", command=self.on_save)
-        self.file_menu.add_command(label="Save As..", command=self.on_save_as)
+        self.file_menu.add_command(label="Open", accelerator="Ctrl+O", command=self.on_open)
+        self.file_menu.add_command(label="Save", accelerator="Ctrl+S", command=self.on_save)
+        self.file_menu.add_command(label="Save As..", accelerator="Ctrl+Shift+S", command=self.on_save_as)
         self.file_menu.add_separator()
-        self.file_menu.add_command(label="Exit", command=self.on_exit)
+        self.file_menu.add_command(label="Exit", accelerator="Ctrl+Q", command=self.on_exit)
         menubar.add_cascade(label="Files", menu=self.file_menu)
         
         self.debug_menu = tk.Menu(menubar, tearoff=0)
-        self.debug_menu.add_command(label="Run", command=self.on_run)
-        self.debug_menu.add_command(label="Step", command=self.on_step)
-        self.debug_menu.add_command(label="Stop", command=self.on_stop)
-        self.debug_menu.add_command(label="Reset", command=self.on_reset)
-        self.debug_menu.add_command(label="Animate", command=self.on_animate)
+        self.debug_menu.add_command(label="Run", accelerator="F5", command=self.on_run)
+        self.debug_menu.add_command(label="Step", accelerator="F10", command=self.on_step)
+        self.debug_menu.add_command(label="Stop", accelerator="Shift+F5", command=self.on_stop)
+        self.debug_menu.add_command(label="Reset", accelerator="Ctrl+R", command=self.on_reset)
+        self.debug_menu.add_command(label="Animate", accelerator="F8", command=self.on_animate)
         menubar.add_cascade(label="Debug", menu=self.debug_menu)
         
         self.config(menu=menubar)
+        
+        # --- Keyboard Bindings ---
+        self.bind("<Control-o>", self.on_open)
+        self.bind("<Control-s>", self.on_save)
+        self.bind("<Control-S>", self.on_save_as) # Shift+S
+        self.bind("<Control-q>", self.on_exit)
+        
+        self.bind("<F5>", self.on_run)
+        self.bind("<F10>", self.on_step)
+        self.bind("<Shift-F5>", self.on_stop)
+        self.bind("<Control-r>", self.on_reset)
+        self.bind("<F8>", self.on_animate)
 
         # --- Status Bar ---
         self.status_var = tk.StringVar()
@@ -87,41 +95,8 @@ class App(tk.Tk):
         right_frame = tk.Frame(main_frame, padx=10)
         right_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-        tk.Label(right_frame, text="CPU State", font=("Arial", 10, "bold")).pack(anchor="w")
-        
-        # CPU State Table
-        cpu_table = tk.Frame(right_frame)
-        cpu_table.pack(anchor="w", pady=5)
-        
-        registers = ['a', 'b', 'c', 'd', 'e', 'h', 'l', 'pc', 'sp', 'halted']
-        
-        for i, reg in enumerate(registers):
-            row, col = divmod(i, 5)
-            tk.Label(cpu_table, text=f"{reg}:", bg="#ffffc1", width=6, anchor="e", font=("Courier", 10, "bold"), relief="ridge").grid(row=row, column=col*2, padx=1, pady=1)
-            
-            var = tk.StringVar(value="")
-            self.cpu_state_vars[reg] = var
-            entry = tk.Entry(cpu_table, textvariable=var, width=6, font=("Courier", 10))
-            self.cpu_state_entries[reg] = entry
-            entry.grid(row=row, column=col*2+1, padx=1, pady=1)
-            entry.bind("<Return>", lambda e, r=reg: self.on_reg_edit(r))
-            entry.bind("<FocusOut>", lambda e, r=reg: self.on_reg_edit(r))
-
-        # Flags Table
-        tk.Label(right_frame, text="Flags", font=("Arial", 10, "bold")).pack(anchor="w", pady=(10, 0))
-        flags_table = tk.Frame(right_frame)
-        flags_table.pack(anchor="w", pady=5)
-        
-        flags = ['Sign', 'Zero', 'Parity', 'Carry']
-        for i, flag in enumerate(flags):
-            tk.Label(flags_table, text=f"{flag}:", bg="#feeeb6", width=8, anchor="e", font=("Courier", 10, "bold"), relief="ridge").grid(row=0, column=i*2, padx=1, pady=1)
-            var = tk.StringVar(value="")
-            self.flags_state_vars[flag] = var
-            entry = tk.Entry(flags_table, textvariable=var, width=4, font=("Courier", 10))
-            self.flags_entries[flag] = entry
-            entry.grid(row=0, column=i*2+1, padx=1, pady=1)
-            entry.bind("<Return>", lambda e, f=flag: self.on_flag_edit(f))
-            entry.bind("<FocusOut>", lambda e, f=flag: self.on_flag_edit(f))
+        self.registers_panel = RegistersPanel(right_frame, self)
+        self.registers_panel.pack(fill=tk.X, pady=(0, 5))
 
         # --- STACK PANEL ---
         tk.Frame(right_frame, height=10).pack() # spacer
@@ -196,28 +171,6 @@ class App(tk.Tk):
             self.debug_menu.entryconfig("Reset", state=tk.NORMAL)
             self.debug_menu.entryconfig("Stop", state=tk.DISABLED)
 
-    def on_reg_edit(self, reg):
-        try:
-            val = int(self.cpu_state_vars[reg].get(), 16)
-            self.debugger.set_register(reg, val)
-        except ValueError:
-            pass
-        self.update_ui()
-
-    def on_flag_edit(self, flag):
-        try:
-            val = int(self.flags_state_vars[flag].get())
-            if val in (0, 1):
-                state = self.debugger.get_state()
-                f_val = state.f
-                bit = {'Sign': 7, 'Zero': 6, 'Parity': 2, 'Carry': 0}[flag]
-                if val: f_val |= (1 << bit)
-                else: f_val &= ~(1 << bit)
-                self.debugger.set_register('f', f_val)
-        except ValueError:
-            pass
-        self.update_ui()
-
     def compile_code(self, quiet=False):
         try:
             prog = self.code_editor.get_text()
@@ -234,7 +187,7 @@ class App(tk.Tk):
                 self.set_status_fail(str(e))
             return False
 
-    def on_open(self):
+    def on_open(self, event=None):
         file_path = filedialog.askopenfilename(defaultextension=".asm", filetypes=[("Assembly Files", "*.asm"), ("All Files", "*.*")])
         if file_path:
             try:
@@ -247,8 +200,12 @@ class App(tk.Tk):
                 self.status_var.set(f"Loaded {self.current_file}")
             except Exception as e:
                 self.set_status_fail(f"Failed to open file: {e}")
+        return "break"
 
-    def on_save(self):
+    def on_save(self, event=None):
+        if not self.code_editor.get_text().strip():
+            return "break"
+            
         if self.current_file:
             try:
                 with open(self.current_file, "w", encoding="utf-8") as f:
@@ -259,17 +216,22 @@ class App(tk.Tk):
                 self.set_status_fail(f"Failed to save file: {e}")
         else:
             self.on_save_as()
+        return "break"
 
-    def on_save_as(self):
+    def on_save_as(self, event=None):
+        if not self.code_editor.get_text().strip():
+            return "break"
+            
         file_path = filedialog.asksaveasfilename(defaultextension=".asm", filetypes=[("Assembly Files", "*.asm"), ("All Files", "*.*")])
         if file_path:
             self.current_file = file_path
             self.on_save()
+        return "break"
 
-    def on_exit(self):
+    def on_exit(self, event=None):
         self.destroy()
 
-    def on_reset(self):
+    def on_reset(self, event=None):
         if self.debugger.running:
             self.on_stop()
         if self.debugger.is_dirty:
@@ -281,18 +243,26 @@ class App(tk.Tk):
             self.set_status_ready()
             self.update_ui()
         self.update_menu_states()
+        return "break"
 
-    def on_step(self):
+    def on_step(self, event=None):
+        if self.debugger.running or not self.code_editor.get_text().strip():
+            return "break"
+            
         if self.debugger.is_dirty and not self.compile_code():
-            return
+            return "break"
         self.debugger.step()
         self.update_ui()
+        return "break"
 
-    def on_run(self):
+    def on_run(self, event=None):
+        if self.debugger.running or not self.code_editor.get_text().strip():
+            return "break"
+            
         if self.debugger.is_dirty and not self.compile_code():
-            return
+            return "break"
         if self.debugger.get_state().halted:
-            return
+            return "break"
             
         self.debugger.run()
         self.update_menu_states()
@@ -300,12 +270,16 @@ class App(tk.Tk):
         self.status_var.set("Running...")
         
         self.execution_loop()
+        return "break"
 
-    def on_animate(self):
+    def on_animate(self, event=None):
+        if self.debugger.running or not self.code_editor.get_text().strip():
+            return "break"
+            
         if self.debugger.is_dirty and not self.compile_code():
-            return
+            return "break"
         if self.debugger.get_state().halted:
-            return
+            return "break"
             
         self.animating = True
         self.debugger.run()
@@ -314,13 +288,18 @@ class App(tk.Tk):
         self.status_var.set("Animating...")
         
         self.animation_loop()
+        return "break"
 
-    def on_stop(self):
+    def on_stop(self, event=None):
+        if not self.debugger.running:
+            return "break"
+            
         self.debugger.stop()
         self.animating = False
         self.update_menu_states()
         self.set_status_success()
         self.update_ui()
+        return "break"
 
     def execution_loop(self):
         if not self.debugger.running:
@@ -347,29 +326,9 @@ class App(tk.Tk):
             self.after(500, self.animation_loop)
 
     def update_ui(self):
-        # Clear previous highlights
-        for entry in self.last_highlighted_entries:
-            entry.config(bg="white")
-        self.last_highlighted_entries.clear()
-
         state = self.debugger.get_state()
         
-        self.cpu_state_vars['a'].set(f"{state.a:02X}")
-        self.cpu_state_vars['b'].set(f"{state.b:02X}")
-        self.cpu_state_vars['c'].set(f"{state.c:02X}")
-        self.cpu_state_vars['d'].set(f"{state.d:02X}")
-        self.cpu_state_vars['e'].set(f"{state.e:02X}")
-        self.cpu_state_vars['h'].set(f"{state.h:02X}")
-        self.cpu_state_vars['l'].set(f"{state.l:02X}")
-        self.cpu_state_vars['pc'].set(f"{state.pc:04X}")
-        self.cpu_state_vars['sp'].set(f"{state.sp:04X}")
-        self.cpu_state_vars['halted'].set(str(int(state.halted)))
-        
-        f_val = state.f
-        self.flags_state_vars['Sign'].set(str((f_val >> 7) & 1))
-        self.flags_state_vars['Zero'].set(str((f_val >> 6) & 1))
-        self.flags_state_vars['Parity'].set(str((f_val >> 2) & 1))
-        self.flags_state_vars['Carry'].set(str(f_val & 1))
+        self.registers_panel.update_display(state, self.debugger.last_modified_regs)
 
         for item in self.labels_tree.get_children():
             self.labels_tree.delete(item)
@@ -386,17 +345,6 @@ class App(tk.Tk):
                 self.status_var.set(f"Warning: Executing modified memory at {highlight_addr:04X} which differs from source!")
                 self.status_label.config(fg="#d97706") # Orange warning
             self.code_editor.highlight_execution_line(line_num, is_modified)
-
-        # Highlight modified registers and flags
-        for reg in self.debugger.last_modified_regs:
-            if reg == 'f':
-                for flag_entry in self.flags_entries.values():
-                    flag_entry.config(bg="#d2f8d2")
-                    self.last_highlighted_entries.append(flag_entry)
-            elif reg in self.cpu_state_entries:
-                entry = self.cpu_state_entries[reg]
-                entry.config(bg="#d2f8d2")
-                self.last_highlighted_entries.append(entry)
 
         # Update Stack Panel
         if self.stack_panel:
