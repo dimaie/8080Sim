@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 
 from src.debugger import Debugger
+from src.code_editor import CodeEditor
 
 
 CODE_SAMPLES = {
@@ -174,51 +175,22 @@ class App(tk.Tk):
         left_frame.pack(side=tk.LEFT, fill=tk.Y)
 
         tk.Label(left_frame, text="Code", font=("Arial", 10, "bold")).pack(anchor="w")
-        
-        editor_frame = tk.Frame(left_frame)
-        editor_frame.pack(fill=tk.BOTH, expand=True)
-        
-        self.gutter_canvas = tk.Canvas(editor_frame, width=20, bg="#f0f0f0", highlightthickness=0)
-        self.gutter_canvas.pack(side=tk.LEFT, fill=tk.Y)
-        self.gutter_canvas.bind("<Button-1>", self.on_gutter_click)
-        
-        self.code_text = tk.Text(editor_frame, width=50, height=25, font=("Courier", 10), undo=True)
-        self.code_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        
-        self.scrollbar = ttk.Scrollbar(editor_frame, orient="vertical", command=self.code_text.yview)
-        self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        self.code_text.config(yscrollcommand=self.on_text_scroll)
-        
-        self.code_text.tag_configure("current_line", background="#b3d7ff")
-        self.code_text.tag_configure("value_modified", background="#d2f8d2")
-        self.code_text.tag_configure("modified_line", background="#ffeb99")
-        self.code_text.tag_configure("breakpoint", background="#ffcccc")
-        
-        # Syntax Highlighting Tags
-        self.code_text.tag_configure("syntax_comment", foreground="#008000") # Green
-        self.code_text.tag_configure("syntax_string", foreground="#a31515") # Brown
-        self.code_text.tag_configure("syntax_label", foreground="#800080") # Purple
-        self.code_text.tag_configure("syntax_instruction", foreground="#0000ff", font=("Courier", 10, "bold")) # Blue Bold
-        self.code_text.tag_configure("syntax_register", foreground="#0000a0") # Dark Blue
-        self.code_text.tag_configure("syntax_number", foreground="#ff8000") # Orange
 
-        # Ensure execution markers are visible on top of everything
-        self.code_text.tag_raise("current_line", "breakpoint")
-        self.code_text.tag_raise("modified_line", "breakpoint")
+        labels_frame = tk.Frame(left_frame)
+        labels_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=(0, 15))
         
-        self.code_text.bind("<Double-Button-1>", self.on_toggle_breakpoint)
-        self.code_text.bind("<<Modified>>", self.on_text_modified)
-        self.code_text.bind("<Configure>", lambda e: self.after_idle(self.update_gutter))
-
-        tk.Label(left_frame, text="Labels", font=("Arial", 10, "bold")).pack(anchor="w", pady=(10, 0))
+        tk.Label(labels_frame, text="Labels", font=("Arial", 10, "bold")).pack(anchor="w", pady=(10, 0))
         
         columns = ("Label", "Address")
-        self.labels_tree = ttk.Treeview(left_frame, columns=columns, show="headings", height=8)
+        self.labels_tree = ttk.Treeview(labels_frame, columns=columns, show="headings", height=8)
         self.labels_tree.heading("Label", text="Label")
         self.labels_tree.heading("Address", text="Address")
         self.labels_tree.column("Label", width=150)
         self.labels_tree.column("Address", width=100)
         self.labels_tree.pack(fill=tk.X)
+
+        self.code_editor = CodeEditor(left_frame, self)
+        self.code_editor.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
         # Right Column (CPU State, Flags, RAM)
         right_frame = tk.Frame(main_frame, padx=10)
@@ -322,7 +294,7 @@ class App(tk.Tk):
             self.btn_step.config(state=tk.DISABLED)
             self.btn_stop.config(state=tk.NORMAL)
         else:
-            has_code = bool(self.code_text.get("1.0", tk.END).strip())
+            has_code = bool(self.code_editor.get_text().strip())
             state_val = tk.NORMAL if has_code else tk.DISABLED
             self.btn_run.config(state=state_val)
             self.btn_animate.config(state=state_val)
@@ -369,107 +341,13 @@ class App(tk.Tk):
             pass
         self.update_ui()
 
-    def highlight_syntax(self):
-        for tag in ["syntax_comment", "syntax_string", "syntax_label", "syntax_instruction", "syntax_register", "syntax_number"]:
-            self.code_text.tag_remove(tag, "1.0", tk.END)
-
-        instructions = {'adc', 'add', 'aci', 'adi', 'ana', 'ani', 'call', 'cc', 'cnc', 'cnz', 'cm', 'cp', 'cpe', 'cpo', 'cz', 'cma', 'cmc', 'cmp', 'cpi', 'dad', 'db', 'dw', 'dcr', 'dcx', 'hlt', 'inr', 'inx', 'jc', 'jm', 'jmp', 'jnc', 'jnz', 'jp', 'jpe', 'jpo', 'jz', 'lda', 'ldax', 'lhld', 'lxi', 'mov', 'mvi', 'nop', 'ora', 'ori', 'pchl', 'pop', 'push', 'rc', 'ret', 'rnc', 'rnz', 'rm', 'rp', 'rpe', 'rpo', 'rz', 'ral', 'rar', 'rlc', 'rrc', 'sbb', 'sbi', 'shld', 'sphl', 'sta', 'stax', 'stc', 'sub', 'sui', 'xchg', 'xra', 'xri', 'xthl', 'org'}
-        registers = {'a', 'b', 'c', 'd', 'e', 'h', 'l', 'm', 'sp', 'psw', 'bc', 'de', 'hl'}
-
-        line_counters = {}
-        
-        for tok in self.debugger.tokens:
-            name = tok['name']
-            val = tok['value']
-            raw = tok['raw']
-            line = tok['pos'].line
-            
-            tag = None
-            if name == 'COMMENT': tag = 'syntax_comment'
-            elif name == 'STRING': tag = 'syntax_string'
-            elif name == 'LABEL': tag = 'syntax_label'
-            elif name == 'NUMBER': tag = 'syntax_number'
-            elif name == 'ID':
-                lower_val = val.lower()
-                if lower_val in instructions: tag = 'syntax_instruction'
-                elif lower_val in registers: tag = 'syntax_register'
-                    
-            if tag:
-                if line not in line_counters:
-                    line_counters[line] = 0
-                
-                line_text = self.code_text.get(f"{line}.0", f"{line}.end")
-                start_col = line_text.find(raw, line_counters[line])
-                if start_col != -1:
-                    end_col = start_col + len(raw)
-                    self.code_text.tag_add(tag, f"{line}.{start_col}", f"{line}.{end_col}")
-                    line_counters[line] = end_col
-
-    def on_text_scroll(self, *args):
-        self.scrollbar.set(*args)
-        self.update_gutter()
-
-    def update_gutter(self, event=None):
-        self.gutter_canvas.delete("all")
-        for bp in self.debugger.breakpoints:
-            info = self.code_text.dlineinfo(f"{bp}.0")
-            if info:
-                x, y, w, h, base = info
-                cy = y + h // 2
-                self.gutter_canvas.create_oval(4, cy - 4, 12, cy + 4, fill="#e51400", outline="#a00000")
-
-    def on_text_modified(self, event):
-        if self.code_text.edit_modified():
-            self.debugger.is_dirty = True
-            if self.debugger.running:
-                self.on_stop()
-            self.code_text.tag_remove("current_line", "1.0", tk.END)
-            
-            if self.compile_code(quiet=False):
-                self.update_ui()
-                self.set_status_ready()
-                
-            self.highlight_syntax()
-            self.after_idle(self.update_gutter)
-                
-            self.code_text.edit_modified(False)
-            self.update_button_states()
-
-    def on_toggle_breakpoint(self, event):
-        index = self.code_text.index(f"@{event.x},{event.y}")
-        line_num = int(index.split('.')[0])
-        self.toggle_breakpoint_ui(line_num)
-        return "break"
-
-    def on_gutter_click(self, event):
-        index = self.code_text.index(f"@0,{event.y}")
-        line_num = int(index.split('.')[0])
-        self.toggle_breakpoint_ui(line_num)
-
-    def toggle_breakpoint_ui(self, line_num):
-        if self.debugger.is_dirty:
-            self.compile_code(quiet=True)
-            
-        if self.debugger.toggle_breakpoint(line_num):
-            if line_num in self.debugger.breakpoints:
-                self.code_text.tag_add("breakpoint", f"{line_num}.0", f"{line_num}.0 lineend")
-            else:
-                self.code_text.tag_remove("breakpoint", f"{line_num}.0", f"{line_num}.0 lineend")
-            self.update_gutter()
-        else:
-            self.set_status_fail("Breakpoints can only be set on executable commands.")
-
     def compile_code(self, quiet=False):
         try:
-            prog = self.code_text.get("1.0", tk.END)
+            prog = self.code_editor.get_text()
             self.debugger.compile(prog)
             
             # Validate existing breakpoints
-            self.code_text.tag_remove("breakpoint", "1.0", tk.END)
-            for bp in self.debugger.breakpoints:
-                self.code_text.tag_add("breakpoint", f"{bp}.0", f"{bp}.0 lineend")
-            
-            self.after_idle(self.update_gutter)
+            self.code_editor.update_breakpoints()
             
             if not quiet:
                 self.set_status_success()
@@ -483,8 +361,7 @@ class App(tk.Tk):
         sample_name = self.sample_cb.get()
         if sample_name in CODE_SAMPLES:
             code = CODE_SAMPLES[sample_name].lstrip('\n')
-            self.code_text.delete("1.0", tk.END)
-            self.code_text.insert(tk.END, code)
+            self.code_editor.set_text(code)
             self.debugger.is_dirty = True
             self.on_reset()
 
@@ -494,7 +371,7 @@ class App(tk.Tk):
         if self.debugger.is_dirty:
             if self.compile_code():
                 self.update_ui()
-            self.highlight_syntax()
+            self.code_editor.highlight_syntax()
         else:
             self.debugger.reset()
             self.set_status_ready()
@@ -597,19 +474,16 @@ class App(tk.Tk):
         for label, addr in self.debugger.label_to_addr.items():
             self.labels_tree.insert("", tk.END, values=(f"{label}:", f"{addr:04X}"))
             
-        self.code_text.tag_remove("current_line", "1.0", tk.END)
-        self.code_text.tag_remove("modified_line", "1.0", tk.END)
+        self.code_editor.clear_execution_highlight()
         highlight_addr = state.pc - 1 if state.halted else state.pc
         
         if highlight_addr in self.debugger.addr_to_line:
             line_num = self.debugger.addr_to_line[highlight_addr]
-            if self.debugger.memory[highlight_addr] != self.debugger.original_memory[highlight_addr]:
-                self.code_text.tag_add("modified_line", f"{line_num}.0", f"{line_num}.0 lineend")
+            is_modified = self.debugger.memory[highlight_addr] != self.debugger.original_memory[highlight_addr]
+            if is_modified:
                 self.status_var.set(f"Warning: Executing modified memory at {highlight_addr:04X} which differs from source!")
                 self.status_label.config(fg="#d97706") # Orange warning
-            else:
-                self.code_text.tag_add("current_line", f"{line_num}.0", f"{line_num}.0 lineend")
-            self.code_text.see(f"{line_num}.0")
+            self.code_editor.highlight_execution_line(line_num, is_modified)
 
         # Highlight modified registers and flags
         for reg in self.debugger.last_modified_regs:
@@ -643,7 +517,7 @@ class App(tk.Tk):
         except ValueError:
             pass # Ignore if ram start address is invalid
             
-        self.after_idle(self.update_gutter)
+        self.after_idle(self.code_editor.update_gutter)
 
     def populate_ram_table(self):
         try:
