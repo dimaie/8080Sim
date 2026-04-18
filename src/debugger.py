@@ -111,7 +111,7 @@ class Debugger:
                     self.stop()
                     return False
             self.just_resumed = False
-            CPU8080.steps(1)
+            self.step()
             
         return self.running
 

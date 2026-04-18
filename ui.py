@@ -125,6 +125,7 @@ class App(tk.Tk):
         self.ram_entries = [] # List of tk.Entry for RAM cells
         self.ram_row_headers = [] # List of tk.StringVar for RAM row headers
         self.last_highlighted_entries = []
+        self.animating = False
 
         self.debugger = Debugger()
 
@@ -138,6 +139,9 @@ class App(tk.Tk):
 
         self.btn_run = tk.Button(control_frame, text="Run", command=self.on_run)
         self.btn_run.pack(side=tk.LEFT, padx=5)
+        
+        self.btn_animate = tk.Button(control_frame, text="Animate", command=self.on_animate)
+        self.btn_animate.pack(side=tk.LEFT, padx=5)
         
         self.btn_stop = tk.Button(control_frame, text="Stop", command=self.on_stop, state=tk.DISABLED)
         self.btn_stop.pack(side=tk.LEFT, padx=5)
@@ -248,7 +252,7 @@ class App(tk.Tk):
         self.ram_show_mode = ttk.Combobox(ram_config_frame, values=["Hex", "ASCII"], state="readonly", width=8)
         self.ram_show_mode.set("Hex")
         self.ram_show_mode.pack(side=tk.LEFT, padx=10)
-        self.ram_show_mode.bind("<<ComboboxSelected>>", lambda e: self.populate_ram_table())
+        self.ram_show_mode.bind("<<ComboboxSelected>>", lambda e: self.update_ui())
 
         # RAM View Table
         ram_table = tk.Frame(right_frame)
@@ -281,8 +285,8 @@ class App(tk.Tk):
         self.ram_start_var = tk.StringVar(value="0000")
         ram_start_entry = tk.Entry(ram_start_frame, textvariable=self.ram_start_var, width=6)
         ram_start_entry.pack(side=tk.LEFT, padx=5)
-        ram_start_entry.bind("<Return>", lambda e: self.populate_ram_table())
-        tk.Button(ram_start_frame, text="Show", command=self.populate_ram_table).pack(side=tk.LEFT)
+        ram_start_entry.bind("<Return>", lambda e: self.update_ui())
+        tk.Button(ram_start_frame, text="Show", command=self.update_ui).pack(side=tk.LEFT)
 
     def set_status_ready(self):
         self.status_var.set("Ready to run")
@@ -457,6 +461,7 @@ class App(tk.Tk):
             
         self.debugger.run()
         self.btn_run.config(state=tk.DISABLED)
+        self.btn_animate.config(state=tk.DISABLED)
         self.btn_step.config(state=tk.DISABLED)
         self.btn_stop.config(state=tk.NORMAL)
         self.set_status_ready()
@@ -464,9 +469,28 @@ class App(tk.Tk):
         
         self.execution_loop()
 
+    def on_animate(self):
+        if self.debugger.is_dirty and not self.compile_code():
+            return
+        if self.debugger.get_state().halted:
+            return
+            
+        self.animating = True
+        self.debugger.run()
+        self.btn_run.config(state=tk.DISABLED)
+        self.btn_animate.config(state=tk.DISABLED)
+        self.btn_step.config(state=tk.DISABLED)
+        self.btn_stop.config(state=tk.NORMAL)
+        self.set_status_ready()
+        self.status_var.set("Animating...")
+        
+        self.animation_loop()
+
     def on_stop(self):
         self.debugger.stop()
+        self.animating = False
         self.btn_run.config(state=tk.NORMAL)
+        self.btn_animate.config(state=tk.NORMAL)
         self.btn_step.config(state=tk.NORMAL)
         self.btn_stop.config(state=tk.DISABLED)
         self.set_status_success()
@@ -482,6 +506,19 @@ class App(tk.Tk):
 
         if self.debugger.running:
             self.after(10, self.execution_loop)
+
+    def animation_loop(self):
+        if not self.animating or not self.debugger.running:
+            return
+            
+        if not self.debugger.execute_batch(1):
+            self.on_stop()
+            return
+            
+        self.update_ui()
+        
+        if self.animating and self.debugger.running:
+            self.after(500, self.animation_loop)
 
     def update_ui(self):
         # Clear previous highlights
@@ -508,7 +545,6 @@ class App(tk.Tk):
         self.flags_state_vars['Parity'].set(str((f_val >> 2) & 1))
         self.flags_state_vars['Carry'].set(str(f_val & 1))
 
-        self.ram_start_var.set("0000")
         self.populate_ram_table()
         
         for item in self.labels_tree.get_children():
@@ -541,7 +577,7 @@ class App(tk.Tk):
                 entry.config(bg="#d2f8d2")
                 self.last_highlighted_entries.append(entry)
 
-        # Highlight modified memory
+        # Highlight modified memory and current execution cell
         try:
             start_addr = int(self.ram_start_var.get(), 16) & 0xFFF0
             if start_addr > 0xFF00: start_addr = 0xFF00
@@ -553,6 +589,12 @@ class App(tk.Tk):
                     entry = self.ram_entries[index]
                     entry.config(bg="#d2f8d2")
                     self.last_highlighted_entries.append(entry)
+                    
+            if start_addr <= highlight_addr < end_addr:
+                index = highlight_addr - start_addr
+                entry = self.ram_entries[index]
+                entry.config(bg="#b3d7ff") # Match the blue 'current_line' tag color
+                self.last_highlighted_entries.append(entry)
         except ValueError:
             pass # Ignore if ram start address is invalid
 
