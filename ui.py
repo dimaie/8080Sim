@@ -131,6 +131,7 @@ class App(tk.Tk):
 
         self.create_widgets()
         self.set_status_ready()
+        self.update_button_states()
 
     def create_widgets(self):
         # --- Top Control Frame ---
@@ -314,6 +315,20 @@ class App(tk.Tk):
         self.status_var.set("SUCCESS")
         self.status_label.config(fg="green")
 
+    def update_button_states(self):
+        if self.debugger.running:
+            self.btn_run.config(state=tk.DISABLED)
+            self.btn_animate.config(state=tk.DISABLED)
+            self.btn_step.config(state=tk.DISABLED)
+            self.btn_stop.config(state=tk.NORMAL)
+        else:
+            has_code = bool(self.code_text.get("1.0", tk.END).strip())
+            state_val = tk.NORMAL if has_code else tk.DISABLED
+            self.btn_run.config(state=state_val)
+            self.btn_animate.config(state=state_val)
+            self.btn_step.config(state=state_val)
+            self.btn_stop.config(state=tk.DISABLED)
+
     def on_reg_edit(self, reg):
         try:
             val = int(self.cpu_state_vars[reg].get(), 16)
@@ -418,6 +433,7 @@ class App(tk.Tk):
             self.after_idle(self.update_gutter)
                 
             self.code_text.edit_modified(False)
+            self.update_button_states()
 
     def on_toggle_breakpoint(self, event):
         index = self.code_text.index(f"@{event.x},{event.y}")
@@ -483,6 +499,7 @@ class App(tk.Tk):
             self.debugger.reset()
             self.set_status_ready()
             self.update_ui()
+        self.update_button_states()
 
     def on_step(self):
         if self.debugger.is_dirty and not self.compile_code():
@@ -497,10 +514,7 @@ class App(tk.Tk):
             return
             
         self.debugger.run()
-        self.btn_run.config(state=tk.DISABLED)
-        self.btn_animate.config(state=tk.DISABLED)
-        self.btn_step.config(state=tk.DISABLED)
-        self.btn_stop.config(state=tk.NORMAL)
+        self.update_button_states()
         self.set_status_ready()
         self.status_var.set("Running...")
         
@@ -514,10 +528,7 @@ class App(tk.Tk):
             
         self.animating = True
         self.debugger.run()
-        self.btn_run.config(state=tk.DISABLED)
-        self.btn_animate.config(state=tk.DISABLED)
-        self.btn_step.config(state=tk.DISABLED)
-        self.btn_stop.config(state=tk.NORMAL)
+        self.update_button_states()
         self.set_status_ready()
         self.status_var.set("Animating...")
         
@@ -526,10 +537,7 @@ class App(tk.Tk):
     def on_stop(self):
         self.debugger.stop()
         self.animating = False
-        self.btn_run.config(state=tk.NORMAL)
-        self.btn_animate.config(state=tk.NORMAL)
-        self.btn_step.config(state=tk.NORMAL)
-        self.btn_stop.config(state=tk.DISABLED)
+        self.update_button_states()
         self.set_status_success()
         self.update_ui()
 
