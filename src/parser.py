@@ -45,6 +45,13 @@ class Lexer:
             return tok
 
         c = self.buf[self.pos]
+        
+        # In standard CP/M 8080 Assembly, '!' acts as an end-of-line separator
+        if c == '!':
+            tok = {'name': 'NEWLINE', 'value': c, 'raw': c, 'pos': self._position()}
+            self.pos += 1
+            return tok
+
         if self._isNewline(c):
             tok = {'name': 'NEWLINE', 'value': c, 'raw': c, 'pos': self._position()}
             self._skipNewlines()
