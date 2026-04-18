@@ -1,117 +1,10 @@
 import tkinter as tk
 from tkinter import ttk
+from tkinter import filedialog
 
 from src.debugger import Debugger
 from src.code_editor import CodeEditor
-from src.memory_panel import MemoryPanel
-
-
-CODE_SAMPLES = {
-    '': '',
-    'add-array-indirect': """
-; The sum will be accumulated into d
-  mvi d, 0
-
-; Demonstrates indirect addressing, by keeping
-; a "pointer" to myArray in bc.
-  lxi bc, myArray
-
-; Each iteration: load next item from myArray
-; (until finding 0) into a. Then accumulate into d.
-Loop:
-  ldax bc
-  cpi 0
-  jz Done
-  add d
-  mov d, a
-  inr c
-  jmp Loop
-
-Done:
-  hlt
-
-myArray:
-  db 10h, 20h, 30h, 10h, 20h, 0
-""",
-    'labeljump': """
-  mvi a, 1h
-  dcr a
-  jz YesZero
-  jnz NoZero
-
-YesZero:
-  mvi c, 20
-  hlt
-
-NoZero:
-  mvi c, 50
-  hlt
-""",
-    'capitalize': """
-  lxi hl, str
-  mvi c, 14
-  call Capitalize
-  hlt
-
-Capitalize:
-  mov a, c
-  cpi 0
-  jz AllDone
-
-  mov a, m
-  cpi 61h
-  jc SkipIt
-
-  cpi 7bh
-  jnc SkipIt
-
-  sui 20h
-  mov m, a
-
-SkipIt:
-  inx hl
-  dcr c
-  jmp Capitalize
-
-AllDone:
-  ret
-
-str:
-  db 'hello, friends'
-""",
-    'memcpy': """
-  lxi de, SourceArray
-  lxi hl, TargetArray
-  mvi b, 0
-  mvi c, 5
-  call memcpy
-  hlt
-
-SourceArray:
-  db 11h, 22h, 33h, 44h, 55h
-
-TargetArray:
-  db 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-
-  ; bc: number of bytes to copy
-  ; de: source block
-  ; hl: target block
-memcpy:
-  mov     a,b         ;Copy register B to register A
-  ora     c           ;Bitwise OR of A and C into register A
-  rz                  ;Return if the zero-flag is set high.
-loop:
-  ldax    de          ;Load A from the address pointed by DE
-  mov     m,a         ;Store A into the address pointed by HL
-  inx     de          ;Increment DE
-  inx     hl          ;Increment HL
-  dcx     bc          ;Decrement BC   (does not affect Flags)
-  mov     a,b         ;Copy B to A    (so as to compare BC with zero)
-  ora     c           ;A = A | C      (set zero)
-  jnz     loop        ;Jump to 'loop:' if the zero-flag is not set.
-  ret                 ;Return
-"""
-}
+from src.memory_panel import MemoryPanel, StackPanel
 
 class App(tk.Tk):
     def __init__(self):
@@ -126,37 +19,36 @@ class App(tk.Tk):
         self.last_highlighted_entries = []
         self.animating = False
         self.memory_panels = []
+        self.current_file = None
+        self.stack_panel = None
 
         self.debugger = Debugger()
 
         self.create_widgets()
         self.set_status_ready()
-        self.update_button_states()
+        self.update_menu_states()
 
     def create_widgets(self):
-        # --- Top Control Frame ---
-        control_frame = tk.Frame(self, pady=5, padx=5)
-        control_frame.pack(side=tk.TOP, fill=tk.X)
-
-        self.btn_run = tk.Button(control_frame, text="Run", command=self.on_run)
-        self.btn_run.pack(side=tk.LEFT, padx=5)
+        # --- Menu Bar ---
+        menubar = tk.Menu(self)
         
-        self.btn_animate = tk.Button(control_frame, text="Animate", command=self.on_animate)
-        self.btn_animate.pack(side=tk.LEFT, padx=5)
+        self.file_menu = tk.Menu(menubar, tearoff=0)
+        self.file_menu.add_command(label="Open", command=self.on_open)
+        self.file_menu.add_command(label="Save", command=self.on_save)
+        self.file_menu.add_command(label="Save As..", command=self.on_save_as)
+        self.file_menu.add_separator()
+        self.file_menu.add_command(label="Exit", command=self.on_exit)
+        menubar.add_cascade(label="Files", menu=self.file_menu)
         
-        self.btn_stop = tk.Button(control_frame, text="Stop", command=self.on_stop, state=tk.DISABLED)
-        self.btn_stop.pack(side=tk.LEFT, padx=5)
+        self.debug_menu = tk.Menu(menubar, tearoff=0)
+        self.debug_menu.add_command(label="Run", command=self.on_run)
+        self.debug_menu.add_command(label="Step", command=self.on_step)
+        self.debug_menu.add_command(label="Stop", command=self.on_stop)
+        self.debug_menu.add_command(label="Reset", command=self.on_reset)
+        self.debug_menu.add_command(label="Animate", command=self.on_animate)
+        menubar.add_cascade(label="Debug", menu=self.debug_menu)
         
-        self.btn_step = tk.Button(control_frame, text="Step", command=self.on_step)
-        self.btn_step.pack(side=tk.LEFT, padx=5)
-        
-        self.btn_reset = tk.Button(control_frame, text="Reset", command=self.on_reset)
-        self.btn_reset.pack(side=tk.LEFT, padx=5)
-
-        tk.Label(control_frame, text="Code sample:").pack(side=tk.LEFT, padx=(30, 0))
-        self.sample_cb = ttk.Combobox(control_frame, values=list(CODE_SAMPLES.keys()), state="readonly")
-        self.sample_cb.pack(side=tk.LEFT, padx=5)
-        tk.Button(control_frame, text="Set", command=self.on_set_sample).pack(side=tk.LEFT)
+        self.config(menu=menubar)
 
         # --- Status Bar ---
         self.status_var = tk.StringVar()
@@ -231,6 +123,12 @@ class App(tk.Tk):
             entry.bind("<Return>", lambda e, f=flag: self.on_flag_edit(f))
             entry.bind("<FocusOut>", lambda e, f=flag: self.on_flag_edit(f))
 
+        # --- STACK PANEL ---
+        tk.Frame(right_frame, height=10).pack() # spacer
+        tk.Label(right_frame, text="Stack View", font=("Arial", 10, "bold")).pack(anchor="w")
+        self.stack_panel = StackPanel(right_frame, self, initial_rows="2")
+        self.stack_panel.pack(fill=tk.X, pady=5)
+
         # --- MEMORY PANELS ---
         tk.Frame(right_frame, height=10).pack() # spacer
         
@@ -278,19 +176,25 @@ class App(tk.Tk):
         self.memory_panels.append(panel)
         self.update_ui()
 
-    def update_button_states(self):
+    def update_menu_states(self):
+        has_code = bool(self.code_editor.get_text().strip())
+        state_val = tk.NORMAL if has_code else tk.DISABLED
+        
+        self.file_menu.entryconfig("Save", state=state_val)
+        self.file_menu.entryconfig("Save As..", state=state_val)
+
         if self.debugger.running:
-            self.btn_run.config(state=tk.DISABLED)
-            self.btn_animate.config(state=tk.DISABLED)
-            self.btn_step.config(state=tk.DISABLED)
-            self.btn_stop.config(state=tk.NORMAL)
+            self.debug_menu.entryconfig("Run", state=tk.DISABLED)
+            self.debug_menu.entryconfig("Animate", state=tk.DISABLED)
+            self.debug_menu.entryconfig("Step", state=tk.DISABLED)
+            self.debug_menu.entryconfig("Reset", state=tk.DISABLED)
+            self.debug_menu.entryconfig("Stop", state=tk.NORMAL)
         else:
-            has_code = bool(self.code_editor.get_text().strip())
-            state_val = tk.NORMAL if has_code else tk.DISABLED
-            self.btn_run.config(state=state_val)
-            self.btn_animate.config(state=state_val)
-            self.btn_step.config(state=state_val)
-            self.btn_stop.config(state=tk.DISABLED)
+            self.debug_menu.entryconfig("Run", state=state_val)
+            self.debug_menu.entryconfig("Animate", state=state_val)
+            self.debug_menu.entryconfig("Step", state=state_val)
+            self.debug_menu.entryconfig("Reset", state=tk.NORMAL)
+            self.debug_menu.entryconfig("Stop", state=tk.DISABLED)
 
     def on_reg_edit(self, reg):
         try:
@@ -330,13 +234,40 @@ class App(tk.Tk):
                 self.set_status_fail(str(e))
             return False
 
-    def on_set_sample(self):
-        sample_name = self.sample_cb.get()
-        if sample_name in CODE_SAMPLES:
-            code = CODE_SAMPLES[sample_name].lstrip('\n')
-            self.code_editor.set_text(code)
-            self.debugger.is_dirty = True
-            self.on_reset()
+    def on_open(self):
+        file_path = filedialog.askopenfilename(defaultextension=".asm", filetypes=[("Assembly Files", "*.asm"), ("All Files", "*.*")])
+        if file_path:
+            try:
+                with open(file_path, "r", encoding="utf-8") as f:
+                    self.code_editor.set_text(f.read())
+                self.current_file = file_path
+                self.debugger.is_dirty = True
+                self.on_reset()
+                self.set_status_success()
+                self.status_var.set(f"Loaded {self.current_file}")
+            except Exception as e:
+                self.set_status_fail(f"Failed to open file: {e}")
+
+    def on_save(self):
+        if self.current_file:
+            try:
+                with open(self.current_file, "w", encoding="utf-8") as f:
+                    f.write(self.code_editor.get_text())
+                self.set_status_success()
+                self.status_var.set(f"Saved to {self.current_file}")
+            except Exception as e:
+                self.set_status_fail(f"Failed to save file: {e}")
+        else:
+            self.on_save_as()
+
+    def on_save_as(self):
+        file_path = filedialog.asksaveasfilename(defaultextension=".asm", filetypes=[("Assembly Files", "*.asm"), ("All Files", "*.*")])
+        if file_path:
+            self.current_file = file_path
+            self.on_save()
+
+    def on_exit(self):
+        self.destroy()
 
     def on_reset(self):
         if self.debugger.running:
@@ -349,7 +280,7 @@ class App(tk.Tk):
             self.debugger.reset()
             self.set_status_ready()
             self.update_ui()
-        self.update_button_states()
+        self.update_menu_states()
 
     def on_step(self):
         if self.debugger.is_dirty and not self.compile_code():
@@ -364,7 +295,7 @@ class App(tk.Tk):
             return
             
         self.debugger.run()
-        self.update_button_states()
+        self.update_menu_states()
         self.set_status_ready()
         self.status_var.set("Running...")
         
@@ -378,7 +309,7 @@ class App(tk.Tk):
             
         self.animating = True
         self.debugger.run()
-        self.update_button_states()
+        self.update_menu_states()
         self.set_status_ready()
         self.status_var.set("Animating...")
         
@@ -387,7 +318,7 @@ class App(tk.Tk):
     def on_stop(self):
         self.debugger.stop()
         self.animating = False
-        self.update_button_states()
+        self.update_menu_states()
         self.set_status_success()
         self.update_ui()
 
@@ -466,6 +397,10 @@ class App(tk.Tk):
                 entry = self.cpu_state_entries[reg]
                 entry.config(bg="#d2f8d2")
                 self.last_highlighted_entries.append(entry)
+
+        # Update Stack Panel
+        if self.stack_panel:
+            self.stack_panel.update_display(self.debugger.memory, highlight_addr, self.debugger.last_modified_mem)
                 
         # Update all memory panels
         for panel in self.memory_panels:

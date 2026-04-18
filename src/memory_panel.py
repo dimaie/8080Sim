@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 
 class MemoryPanel(tk.Frame):
-    def __init__(self, parent, app, initial_start="0000", initial_rows="16"):
+    def __init__(self, parent, app, initial_start="0000", initial_rows="16", closable=True):
         super().__init__(parent, relief=tk.RIDGE, borderwidth=2)
         self.app = app
         self.ram_vars = []
@@ -31,7 +31,8 @@ class MemoryPanel(tk.Frame):
         self.format_var.bind("<<ComboboxSelected>>", lambda e: self.app.update_ui())
         
         tk.Button(ctrl, text="Apply", command=self.rebuild_grid).pack(side=tk.LEFT, padx=2)
-        tk.Button(ctrl, text="X", fg="red", command=self.destroy_panel).pack(side=tk.RIGHT, padx=2)
+        if closable:
+            tk.Button(ctrl, text="X", fg="red", command=self.destroy_panel).pack(side=tk.RIGHT, padx=2)
         
         self.grid_frame = tk.Frame(self)
         self.grid_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=2)
@@ -143,3 +144,29 @@ class MemoryPanel(tk.Frame):
             elif addr in modified_mem:
                 entry.config(bg="#d2f8d2")
                 self.last_highlighted_entries.append(entry)
+
+class StackPanel(MemoryPanel):
+    def __init__(self, parent, app, initial_rows="2"):
+        super().__init__(parent, app, initial_start="0000", initial_rows=initial_rows, closable=False)
+        ctrl = self.winfo_children()[0]
+        for widget in ctrl.winfo_children():
+            if isinstance(widget, tk.Label) and widget.cget("text") == "Addr(Hex):":
+                widget.config(text="Track SP:")
+        
+    def update_display(self, memory, pc, modified_mem):
+        state = self.app.debugger.get_state()
+        sp = state.sp
+        
+        sp_aligned = sp & 0xFFF0
+        start_view = max(0, sp_aligned - 16) # Show one row above current SP
+        self.start_var.set(f"{start_view:04X}")
+        
+        super().update_display(memory, pc, modified_mem)
+        
+        rows = len(self.ram_row_headers)
+        for i in range(rows * 16):
+            if start_view + i == sp:
+                entry = self.ram_entries[i]
+                entry.config(bg="#ffccdc") # Stack pointer pink color
+                if entry not in self.last_highlighted_entries:
+                    self.last_highlighted_entries.append(entry)

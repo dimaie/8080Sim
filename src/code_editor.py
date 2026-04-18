@@ -129,7 +129,7 @@ class CodeEditor(tk.Frame):
             self.after_idle(self.update_gutter)
                 
             self.code_text.edit_modified(False)
-            self.app.update_button_states()
+            self.app.update_menu_states()
 
     def on_toggle_breakpoint(self, event):
         index = self.code_text.index(f"@{event.x},{event.y}")
