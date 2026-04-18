@@ -45,7 +45,8 @@ class Assembler:
                 self.labelToAddr[sl['label']] = curAddr
 
             if sl['instr'] is not None and sl['instr'].lower() != 'org':
-                self.addrToLine[curAddr] = sl['pos'].line
+                if sl['instr'].lower() not in ('db', 'dw'):
+                    self.addrToLine[curAddr] = sl['pos'].line
                 encoded = self._encodeInstruction(sl, curAddr)
                 if self.tracing:
                     print(f"0x{curAddr:x} => {[hex(e) for e in encoded]}")

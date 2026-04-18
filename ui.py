@@ -3,6 +3,7 @@ from tkinter import ttk
 
 from src.debugger import Debugger
 from src.code_editor import CodeEditor
+from src.memory_panel import MemoryPanel
 
 
 CODE_SAMPLES = {
@@ -122,11 +123,9 @@ class App(tk.Tk):
         self.cpu_state_entries = {} # Maps reg name to tk.Entry widget
         self.flags_state_vars = {} # Maps flag name to tk.StringVar
         self.flags_entries = {} # Maps flag name to tk.Entry widget
-        self.ram_vars = [] # List of tk.StringVar for RAM cells
-        self.ram_entries = [] # List of tk.Entry for RAM cells
-        self.ram_row_headers = [] # List of tk.StringVar for RAM row headers
         self.last_highlighted_entries = []
         self.animating = False
+        self.memory_panels = []
 
         self.debugger = Debugger()
 
@@ -232,48 +231,34 @@ class App(tk.Tk):
             entry.bind("<Return>", lambda e, f=flag: self.on_flag_edit(f))
             entry.bind("<FocusOut>", lambda e, f=flag: self.on_flag_edit(f))
 
-        # RAM Config
-        ram_config_frame = tk.Frame(right_frame)
-        ram_config_frame.pack(anchor="w", pady=(10, 0))
-        tk.Label(ram_config_frame, text="RAM", font=("Arial", 10, "bold")).pack(side=tk.LEFT)
-        self.ram_show_mode = ttk.Combobox(ram_config_frame, values=["Hex", "ASCII"], state="readonly", width=8)
-        self.ram_show_mode.set("Hex")
-        self.ram_show_mode.pack(side=tk.LEFT, padx=10)
-        self.ram_show_mode.bind("<<ComboboxSelected>>", lambda e: self.update_ui())
-
-        # RAM View Table
-        ram_table = tk.Frame(right_frame)
-        ram_table.pack(anchor="w", pady=5)
+        # --- MEMORY PANELS ---
+        tk.Frame(right_frame, height=10).pack() # spacer
         
-        # RAM header row
-        tk.Label(ram_table, text="", width=4).grid(row=0, column=0)
-        for i in range(16):
-            tk.Label(ram_table, text=f"{i:01X}", bg="#cde9fa", width=3, font=("Courier", 9, "bold"), relief="ridge").grid(row=0, column=i+1)
-            
-        for row in range(16):
-            row_hdr_var = tk.StringVar(value=f"{row:03X}")
-            self.ram_row_headers.append(row_hdr_var)
-            tk.Label(ram_table, textvariable=row_hdr_var, bg="#cde9fa", width=4, font=("Courier", 9, "bold"), relief="ridge").grid(row=row+1, column=0)
-            
-            for col in range(16):
-                var = tk.StringVar(value="00")
-                self.ram_vars.append(var)
-                entry = tk.Entry(ram_table, textvariable=var, width=3, font=("Courier", 9))
-                self.ram_entries.append(entry)
-                entry.grid(row=row+1, column=col+1)
-                idx = row * 16 + col
-                entry.bind("<Return>", lambda e, i=idx: self.on_ram_edit(i))
-                entry.bind("<FocusOut>", lambda e, i=idx: self.on_ram_edit(i))
-
-        # RAM Address Input
-        ram_start_frame = tk.Frame(right_frame)
-        ram_start_frame.pack(anchor="w", pady=5)
-        tk.Label(ram_start_frame, text="From address (hex):").pack(side=tk.LEFT)
-        self.ram_start_var = tk.StringVar(value="0000")
-        ram_start_entry = tk.Entry(ram_start_frame, textvariable=self.ram_start_var, width=6)
-        ram_start_entry.pack(side=tk.LEFT, padx=5)
-        ram_start_entry.bind("<Return>", lambda e: self.update_ui())
-        tk.Button(ram_start_frame, text="Show", command=self.update_ui).pack(side=tk.LEFT)
+        mem_hdr_frame = tk.Frame(right_frame)
+        mem_hdr_frame.pack(fill=tk.X)
+        tk.Label(mem_hdr_frame, text="Memory Panels", font=("Arial", 10, "bold")).pack(side=tk.LEFT)
+        tk.Button(mem_hdr_frame, text="+ Add Panel", command=self.add_memory_panel).pack(side=tk.RIGHT)
+        
+        mem_outer = tk.Frame(right_frame)
+        mem_outer.pack(fill=tk.BOTH, expand=True, pady=5)
+        
+        self.mem_canvas = tk.Canvas(mem_outer, highlightthickness=0)
+        mem_scrollbar = ttk.Scrollbar(mem_outer, orient="vertical", command=self.mem_canvas.yview)
+        self.mem_scrollable_frame = tk.Frame(self.mem_canvas)
+        
+        self.mem_scrollable_frame.bind(
+            "<Configure>",
+            lambda e: self.mem_canvas.configure(scrollregion=self.mem_canvas.bbox("all"))
+        )
+        
+        self.mem_canvas_window = self.mem_canvas.create_window((0, 0), window=self.mem_scrollable_frame, anchor="nw")
+        self.mem_canvas.bind("<Configure>", lambda e: self.mem_canvas.itemconfig(self.mem_canvas_window, width=e.width))
+        self.mem_canvas.configure(yscrollcommand=mem_scrollbar.set)
+        
+        self.mem_canvas.pack(side="left", fill="both", expand=True)
+        mem_scrollbar.pack(side="right", fill="y")
+        
+        self.add_memory_panel()
 
     def set_status_ready(self):
         self.status_var.set("Ready to run")
@@ -286,6 +271,12 @@ class App(tk.Tk):
     def set_status_success(self):
         self.status_var.set("SUCCESS")
         self.status_label.config(fg="green")
+
+    def add_memory_panel(self):
+        panel = MemoryPanel(self.mem_scrollable_frame, self)
+        panel.pack(fill=tk.X, pady=5, padx=2)
+        self.memory_panels.append(panel)
+        self.update_ui()
 
     def update_button_states(self):
         if self.debugger.running:
@@ -319,24 +310,6 @@ class App(tk.Tk):
                 if val: f_val |= (1 << bit)
                 else: f_val &= ~(1 << bit)
                 self.debugger.set_register('f', f_val)
-        except ValueError:
-            pass
-        self.update_ui()
-
-    def on_ram_edit(self, index):
-        try:
-            val_str = self.ram_vars[index].get()
-            start_addr = int(self.ram_start_var.get(), 16) & 0xFFF0
-            if start_addr > 0xFF00: start_addr = 0xFF00
-            addr = start_addr + index
-            
-            if self.ram_show_mode.get() == "ASCII":
-                if len(val_str) == 2 and val_str.startswith('.'): val = ord(val_str[1])
-                elif len(val_str) == 1: val = ord(val_str)
-                else: val = int(val_str, 16)
-            else: val = int(val_str, 16)
-                
-            self.debugger.set_memory(addr, val & 0xFF)
         except ValueError:
             pass
         self.update_ui()
@@ -467,8 +440,6 @@ class App(tk.Tk):
         self.flags_state_vars['Parity'].set(str((f_val >> 2) & 1))
         self.flags_state_vars['Carry'].set(str(f_val & 1))
 
-        self.populate_ram_table()
-        
         for item in self.labels_tree.get_children():
             self.labels_tree.delete(item)
         for label, addr in self.debugger.label_to_addr.items():
@@ -495,57 +466,12 @@ class App(tk.Tk):
                 entry = self.cpu_state_entries[reg]
                 entry.config(bg="#d2f8d2")
                 self.last_highlighted_entries.append(entry)
-
-        # Highlight modified memory and current execution cell
-        try:
-            start_addr = int(self.ram_start_var.get(), 16) & 0xFFF0
-            if start_addr > 0xFF00: start_addr = 0xFF00
-            end_addr = start_addr + 256
-            
-            for addr in self.debugger.last_modified_mem:
-                if start_addr <= addr < end_addr:
-                    index = addr - start_addr
-                    entry = self.ram_entries[index]
-                    entry.config(bg="#d2f8d2")
-                    self.last_highlighted_entries.append(entry)
-                    
-            if start_addr <= highlight_addr < end_addr:
-                index = highlight_addr - start_addr
-                entry = self.ram_entries[index]
-                entry.config(bg="#b3d7ff") # Match the blue 'current_line' tag color
-                self.last_highlighted_entries.append(entry)
-        except ValueError:
-            pass # Ignore if ram start address is invalid
+                
+        # Update all memory panels
+        for panel in self.memory_panels:
+            panel.update_display(self.debugger.memory, highlight_addr, self.debugger.last_modified_mem)
             
         self.after_idle(self.code_editor.update_gutter)
-
-    def populate_ram_table(self):
-        try:
-            start_addr = int(self.ram_start_var.get(), 16) & 0xFFF0
-            if start_addr > 0xFF00:
-                start_addr = 0xFF00
-                self.ram_start_var.set(f"{start_addr:04X}")
-        except ValueError:
-            start_addr = 0
-            self.ram_start_var.set("0000")
-            
-        header_start = start_addr
-        for i in range(16):
-            self.ram_row_headers[i].set(f"{header_start:04X}"[:3])
-            header_start += 16
-            
-        use_ascii = (self.ram_show_mode.get() == "ASCII")
-        
-        for i in range(256):
-            mem_index = start_addr + i
-            val = self.debugger.memory[mem_index]
-            
-            if use_ascii:
-                display_val = f".{chr(val)}" if 33 <= val <= 126 else ".."
-            else:
-                display_val = f"{val:02X}"
-                
-            self.ram_vars[i].set(display_val)
 
 if __name__ == "__main__":
     app = App()

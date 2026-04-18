@@ -17,6 +17,7 @@ class Debugger:
         self.last_modified_regs = set()
         self.last_modified_mem = set()
         self.tokens = []
+        self.reset()
 
     def toggle_breakpoint(self, line_num):
         if line_num in self.line_to_addr:
