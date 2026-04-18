@@ -26,9 +26,9 @@ class CodeEditor(tk.Frame):
         self.code_text.tag_configure("breakpoint", background="#ffcccc")
         
         # Syntax Highlighting Tags
-        self.code_text.tag_configure("syntax_comment", foreground="#008000") # Green
+        self.code_text.tag_configure("syntax_comment", foreground="#808080") # Gray
         self.code_text.tag_configure("syntax_string", foreground="#a31515") # Brown
-        self.code_text.tag_configure("syntax_label", foreground="#800080") # Purple
+        self.code_text.tag_configure("syntax_label", foreground="#008000") # Green
         self.code_text.tag_configure("syntax_instruction", foreground="#0000ff", font=("Courier", 10, "bold")) # Blue Bold
         self.code_text.tag_configure("syntax_register", foreground="#0000a0") # Dark Blue
         self.code_text.tag_configure("syntax_number", foreground="#ff8000") # Orange
@@ -88,6 +88,7 @@ class CodeEditor(tk.Frame):
                 lower_val = val.lower()
                 if lower_val in instructions: tag = 'syntax_instruction'
                 elif lower_val in registers: tag = 'syntax_register'
+                else: tag = 'syntax_label'
                     
             if tag:
                 if line not in line_counters:
