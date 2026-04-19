@@ -64,9 +64,16 @@ class App(tk.Tk):
         self.bind("<F8>", self.on_animate)
 
         # --- Status Bar ---
+        status_frame = tk.Frame(self)
+        status_frame.pack(side=tk.TOP, fill=tk.X, padx=10)
+        
         self.status_var = tk.StringVar()
-        self.status_label = tk.Label(self, textvariable=self.status_var, fg="black", anchor="w", font=("Arial", 10, "bold"))
-        self.status_label.pack(side=tk.TOP, fill=tk.X, padx=10)
+        self.status_label = tk.Label(status_frame, textvariable=self.status_var, fg="black", anchor="w", font=("Arial", 10, "bold"))
+        self.status_label.pack(side=tk.LEFT)
+        
+        self.cursor_pos_var = tk.StringVar(value="Ln 1, Col 1")
+        self.cursor_pos_label = tk.Label(status_frame, textvariable=self.cursor_pos_var, fg="gray", anchor="e", font=("Arial", 9))
+        self.cursor_pos_label.pack(side=tk.RIGHT)
         
         ttk.Separator(self, orient=tk.HORIZONTAL).pack(side=tk.TOP, fill=tk.X, pady=5)
 
@@ -149,6 +156,9 @@ class App(tk.Tk):
     def set_status_success(self):
         self.status_var.set("SUCCESS")
         self.status_label.config(fg="green")
+        
+    def update_cursor_position(self, line, col):
+        self.cursor_pos_var.set(f"Ln {line}, Col {col}")
 
     def add_memory_panel(self):
         panel = MemoryPanel(self.mem_scrollable_frame, self)

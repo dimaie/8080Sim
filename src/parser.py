@@ -67,7 +67,7 @@ class Lexer:
             elif c in ("'", '"'):
                 return self._string(c)
             else:
-                raise ParseError("invalid token", self._position())
+                raise ParseError(f"invalid token '{c}'", self._position())
 
     def _id(self):
         endpos = self.pos + 1
@@ -136,10 +136,16 @@ class Lexer:
     def _skipNewlines(self):
         while self.pos < len(self.buf):
             c = self.buf[self.pos]
-            if self._isNewline(c):
+            if c == '\r':
+                self.pos += 1
+                if self.pos < len(self.buf) and self.buf[self.pos] == '\n':
+                    self.pos += 1
                 self.lineCount += 1
                 self.lastNewlinePos = self.pos
+            elif c == '\n':
                 self.pos += 1
+                self.lineCount += 1
+                self.lastNewlinePos = self.pos
             else:
                 break
 
@@ -150,7 +156,7 @@ class Lexer:
                c in ('.', '_', '$')
 
     def _position(self):
-        return Position(self.lineCount, self.pos - self.lastNewlinePos)
+        return Position(self.lineCount, self.pos - self.lastNewlinePos + 1)
 
 
 class Parser:

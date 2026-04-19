@@ -33,51 +33,56 @@ class Assembler:
         curAddr = 0
         self.assembled_chunks = []
         for sl in sourceLines:
-            if sl['instr'] is not None and sl['instr'].lower() == 'org':
-                self._expectArgsCount(sl, 1)
-                curAddr = self._argImm(sl, sl['args'][0], bits=16)
-
-            if sl['label'] is not None:
-                if sl['label'] in self.labelToAddr:
-                    self._assemblyError(sl['pos'], f"duplicate label \"{sl['label']}\"")
-                
-                if sl['instr'] is not None and sl['instr'].lower() == 'equ':
+            try:
+                if sl['instr'] is not None and sl['instr'].lower() == 'org':
                     self._expectArgsCount(sl, 1)
-                    val = self._argImm(sl, sl['args'][0], bits=16)
+                    curAddr = self._argImm(sl, sl['args'][0], bits=16)
+    
+                if sl['label'] is not None:
+                    if sl['label'] in self.labelToAddr:
+                        self._assemblyError(sl['pos'], f"duplicate label \"{sl['label']}\"")
+                    
+                    if sl['instr'] is not None and sl['instr'].lower() == 'equ':
+                        self._expectArgsCount(sl, 1)
+                        val = self._argImm(sl, sl['args'][0], bits=16)
+                        if self.tracing:
+                            print(f"Setting label {sl['label']}=0x{val:x} (EQU)")
+                        self.labelToAddr[sl['label']] = val
+                    else:
+                        if self.tracing:
+                            print(f"Setting label {sl['label']}=0x{curAddr:x}")
+                        self.labelToAddr[sl['label']] = curAddr
+                elif sl['instr'] is not None and sl['instr'].lower() == 'equ':
+                    self._assemblyError(sl['pos'], "EQU directive requires a label")
+    
+                if sl['instr'] is not None and sl['instr'].lower() not in ('org', 'equ'):
+                    if sl['instr'].lower() not in ('db', 'dw', 'ds'):
+                        self.addrToLine[curAddr] = sl['pos'].line
+                    
+                    if sl['instr'].lower() == 'ds':
+                        self._expectArgsCount(sl, 1)
+                        count = self._argImm(sl, sl['args'][0], bits=16)
+                        curAddr += count
+                        continue
+    
+                    encoded = self._encodeInstruction(sl, curAddr)
                     if self.tracing:
-                        print(f"Setting label {sl['label']}=0x{val:x} (EQU)")
-                    self.labelToAddr[sl['label']] = val
-                else:
-                    if self.tracing:
-                        print(f"Setting label {sl['label']}=0x{curAddr:x}")
-                    self.labelToAddr[sl['label']] = curAddr
-            elif sl['instr'] is not None and sl['instr'].lower() == 'equ':
-                self._assemblyError(sl['pos'], "EQU directive requires a label")
-
-            if sl['instr'] is not None and sl['instr'].lower() not in ('org', 'equ'):
-                if sl['instr'].lower() not in ('db', 'dw', 'ds'):
-                    self.addrToLine[curAddr] = sl['pos'].line
-                
-                if sl['instr'].lower() == 'ds':
-                    self._expectArgsCount(sl, 1)
-                    count = self._argImm(sl, sl['args'][0], bits=16)
-                    curAddr += count
-                    continue
-
-                encoded = self._encodeInstruction(sl, curAddr)
-                if self.tracing:
-                    print(f"0x{curAddr:x} => {[hex(e) for e in encoded]}")
-                
-                if encoded:
-                    self.assembled_chunks.append({
-                        'addr': curAddr,
-                        'length': len(encoded),
-                        'line': sl['pos'].line
-                    })
-                
-                for val in encoded:
-                    self.memory[curAddr] = val
-                    curAddr += 1
+                        print(f"0x{curAddr:x} => {[hex(e) for e in encoded]}")
+                    
+                    if encoded:
+                        self.assembled_chunks.append({
+                            'addr': curAddr,
+                            'length': len(encoded),
+                            'line': sl['pos'].line
+                        })
+                    
+                    for val in encoded:
+                        self.memory[curAddr] = val
+                        curAddr += 1
+            except AssemblyError:
+                raise
+            except Exception as e:
+                self._assemblyError(sl['pos'], str(e))
 
     def _applyFixups(self):
         for label, fixups in self.labelToFixups.items():
@@ -187,6 +192,10 @@ class Assembler:
         elif instrName == 'hlt':
             self._expectArgsCount(sl, 0)
             return [0b01110110]
+        elif instrName == 'in':
+            self._expectArgsCount(sl, 1)
+            port = self._argImmOrLabel(sl, sl['args'][0], curAddr, bits=8, offset=1)
+            return [0b11011011, port]
         elif instrName == 'inr':
             self._expectArgsCount(sl, 1)
             r = self._argR(sl, sl['args'][0])
@@ -242,6 +251,10 @@ class Assembler:
             self._expectArgsCount(sl, 1)
             imm = self._argImmOrLabel(sl, sl['args'][0], curAddr, bits=8, offset=1)
             return [0b11110110, imm]
+        elif instrName == 'out':
+            self._expectArgsCount(sl, 1)
+            port = self._argImmOrLabel(sl, sl['args'][0], curAddr, bits=8, offset=1)
+            return [0b11010011, port]
         elif instrName == 'pchl':
             self._expectArgsCount(sl, 0)
             return [0b11101001]
@@ -330,6 +343,8 @@ class Assembler:
             self._assemblyError(sl['pos'], f"want {count} args for {sl['instr']}; got {len(sl['args'])}")
 
     def _argRP(self, sl, arg):
+        if not isinstance(arg, str):
+            self._assemblyError(sl['pos'], "invalid register pair")
         arg_lower = arg.lower()
         if arg_lower in ('bc', 'b'): return 0b00
         elif arg_lower in ('de', 'd'): return 0b01
@@ -339,6 +354,8 @@ class Assembler:
             self._assemblyError(sl['pos'], f"invalid register pair {arg}")
 
     def _argR(self, sl, arg):
+        if not isinstance(arg, str):
+            self._assemblyError(sl['pos'], "invalid register")
         arg_lower = arg.lower()
         if arg_lower == 'a': return 0b111
         elif arg_lower == 'b': return 0b000
@@ -354,10 +371,11 @@ class Assembler:
     def _argImm(self, sl, arg, bits=8):
         n = self._parseNumber(arg)
         if n is None:
-            if arg in self.labelToAddr:
+            if isinstance(arg, str) and arg in self.labelToAddr:
                 n = self.labelToAddr[arg]
             else:
-                self._assemblyError(sl['pos'], f"invalid immediate or undefined label {arg}")
+                val_str = f"'{''.join(arg)}'" if isinstance(arg, list) else arg
+                self._assemblyError(sl['pos'], f"invalid immediate or undefined label {val_str}")
             
         min_val = -(1 << (bits - 1))
         max_val = (1 << bits) - 1
@@ -367,8 +385,9 @@ class Assembler:
         return n & ((1 << bits) - 1)
 
     def _argLabel(self, sl, arg, curAddr, bits=16, offset=1):
-        if not re.match(r'^[a-zA-Z_][a-zA-Z_0-9]*', arg):
-            self._assemblyError(sl['pos'], f"invalid label name {arg}")
+        if not isinstance(arg, str) or not re.match(r'^[a-zA-Z_][a-zA-Z_0-9]*', arg):
+            val_str = f"'{''.join(arg)}'" if isinstance(arg, list) else arg
+            self._assemblyError(sl['pos'], f"invalid label name {val_str}")
 
         fixup = {'addr': curAddr, 'pos': sl['pos'], 'bits': bits, 'offset': offset}
         if arg not in self.labelToFixups:
@@ -393,6 +412,14 @@ class Assembler:
         return n & ((1 << bits) - 1)
 
     def _parseNumber(self, n):
+        if isinstance(n, list):
+            if len(n) == 1: return ord(n[0])
+            if len(n) == 2: return (ord(n[0]) << 8) | ord(n[1])
+            return None
+            
+        if not isinstance(n, str):
+            return None
+            
         n = n.lower()
         base = 10
         if n.startswith('0x'):

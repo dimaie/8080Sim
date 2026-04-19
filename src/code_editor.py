@@ -13,12 +13,18 @@ class CodeEditor(tk.Frame):
         self.gutter_canvas.pack(side=tk.LEFT, fill=tk.Y)
         self.gutter_canvas.bind("<Button-1>", self.on_gutter_click)
         
-        self.code_text = tk.Text(self, width=50, height=25, font=("Courier", 10), undo=True)
+        self.scrollbar = ttk.Scrollbar(self, orient="vertical")
+        self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        self.h_scrollbar = ttk.Scrollbar(self, orient="horizontal")
+        self.h_scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
+        
+        self.code_text = tk.Text(self, width=50, height=25, font=("Courier", 10), undo=True, wrap="none")
         self.code_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         
-        self.scrollbar = ttk.Scrollbar(self, orient="vertical", command=self.code_text.yview)
-        self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        self.code_text.config(yscrollcommand=self.on_text_scroll)
+        self.scrollbar.config(command=self.code_text.yview)
+        self.h_scrollbar.config(command=self.code_text.xview)
+        self.code_text.config(yscrollcommand=self.on_text_scroll, xscrollcommand=self.h_scrollbar.set)
         
         self.code_text.tag_configure("current_line", background="#b3d7ff")
         self.code_text.tag_configure("value_modified", background="#d2f8d2")
@@ -40,6 +46,8 @@ class CodeEditor(tk.Frame):
         self.code_text.bind("<Double-Button-1>", self.on_toggle_breakpoint)
         self.code_text.bind("<<Modified>>", self.on_text_modified)
         self.code_text.bind("<Configure>", lambda e: self.after_idle(self.update_gutter))
+        self.code_text.bind("<KeyRelease>", self.on_cursor_move)
+        self.code_text.bind("<ButtonRelease-1>", self.on_cursor_move)
 
     def get_text(self):
         return self.code_text.get("1.0", tk.END)
@@ -69,7 +77,7 @@ class CodeEditor(tk.Frame):
         for tag in ["syntax_comment", "syntax_string", "syntax_label", "syntax_instruction", "syntax_register", "syntax_number"]:
             self.code_text.tag_remove(tag, "1.0", tk.END)
 
-        instructions = {'adc', 'add', 'aci', 'adi', 'ana', 'ani', 'call', 'cc', 'cnc', 'cnz', 'cm', 'cp', 'cpe', 'cpo', 'cz', 'cma', 'cmc', 'cmp', 'cpi', 'dad', 'db', 'ds', 'dw', 'dcr', 'dcx', 'equ', 'hlt', 'inr', 'inx', 'jc', 'jm', 'jmp', 'jnc', 'jnz', 'jp', 'jpe', 'jpo', 'jz', 'lda', 'ldax', 'lhld', 'lxi', 'mov', 'mvi', 'nop', 'ora', 'ori', 'pchl', 'pop', 'push', 'rc', 'ret', 'rnc', 'rnz', 'rm', 'rp', 'rpe', 'rpo', 'rz', 'ral', 'rar', 'rlc', 'rrc', 'sbb', 'sbi', 'shld', 'sphl', 'sta', 'stax', 'stc', 'sub', 'sui', 'xchg', 'xra', 'xri', 'xthl', 'org'}
+        instructions = {'adc', 'add', 'aci', 'adi', 'ana', 'ani', 'call', 'cc', 'cnc', 'cnz', 'cm', 'cp', 'cpe', 'cpo', 'cz', 'cma', 'cmc', 'cmp', 'cpi', 'dad', 'db', 'ds', 'dw', 'dcr', 'dcx', 'equ', 'hlt', 'in', 'inr', 'inx', 'jc', 'jm', 'jmp', 'jnc', 'jnz', 'jp', 'jpe', 'jpo', 'jz', 'lda', 'ldax', 'lhld', 'lxi', 'mov', 'mvi', 'nop', 'ora', 'ori', 'out', 'pchl', 'pop', 'push', 'rc', 'ret', 'rnc', 'rnz', 'rm', 'rp', 'rpe', 'rpo', 'rz', 'ral', 'rar', 'rlc', 'rrc', 'sbb', 'sbi', 'shld', 'sphl', 'sta', 'stax', 'stc', 'sub', 'sui', 'xchg', 'xra', 'xri', 'xthl', 'org'}
         registers = {'a', 'b', 'c', 'd', 'e', 'h', 'l', 'm', 'sp', 'psw', 'bc', 'de', 'hl'}
         line_counters = {}
         
@@ -130,6 +138,7 @@ class CodeEditor(tk.Frame):
                 
             self.code_text.edit_modified(False)
             self.app.update_menu_states()
+            self.on_cursor_move()
 
     def on_toggle_breakpoint(self, event):
         index = self.code_text.index(f"@{event.x},{event.y}")
@@ -154,3 +163,8 @@ class CodeEditor(tk.Frame):
             self.update_gutter()
         else:
             self.app.set_status_fail("Breakpoints can only be set on executable commands.")
+            
+    def on_cursor_move(self, event=None):
+        index = self.code_text.index(tk.INSERT)
+        line, col = index.split('.')
+        self.app.update_cursor_position(line, int(col) + 1)

@@ -12,6 +12,8 @@ class CPUState(dict):
 class CPU8080:
     _mem_read = None
     _mem_write = None
+    _io_read = None
+    _io_write = None
     _state = None
     _t = 0
     
@@ -19,9 +21,11 @@ class CPU8080:
     _reg_names = ['b', 'c', 'd', 'e', 'h', 'l', 'm', 'a']
 
     @classmethod
-    def init(cls, memoryTo, memoryAt):
+    def init(cls, memoryTo, memoryAt, io_read=None, io_write=None):
         cls._mem_write = memoryTo
         cls._mem_read = memoryAt
+        cls._io_read = io_read if io_read else lambda port: 0
+        cls._io_write = io_write if io_write else lambda port, val: None
         cls._state = CPUState({
             'a': 0, 'b': 0, 'c': 0, 'd': 0, 'e': 0, 'h': 0, 'l': 0,
             'pc': 0, 'sp': 0, 'f': 2, 'halted': False
@@ -208,6 +212,12 @@ class CPU8080:
                 new_cy = a & 1
                 cls._state['a'] = ((a >> 1) | (cy << 7)) & 0xFF
                 cls._set_cy(new_cy)
+            elif op == 0xDB: # IN port
+                port = cls._fetch_byte()
+                cls._state['a'] = cls._io_read(port)
+            elif op == 0xD3: # OUT port
+                port = cls._fetch_byte()
+                cls._io_write(port, cls._state['a'])
 
     # === Helpers ===
     @classmethod
