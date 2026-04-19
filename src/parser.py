@@ -64,8 +64,8 @@ class Lexer:
         else:
             if self._isAlphaNum(c):
                 return self._id()
-            elif c == "'":
-                return self._string()
+            elif c in ("'", '"'):
+                return self._string(c)
             else:
                 raise ParseError("invalid token", self._position())
 
@@ -106,8 +106,8 @@ class Lexer:
             self.pos = endpos
             return tok
 
-    def _string(self):
-        end = self.buf.find("'", self.pos + 1)
+    def _string(self, quote_char):
+        end = self.buf.find(quote_char, self.pos + 1)
         if end < 0:
             raise ParseError("unterminated quote", self._position())
         else:
@@ -200,6 +200,12 @@ class Parser:
             args = []
 
             curTok = get_next_tok()
+
+            # Support labels without a colon for common data directives (e.g. "VID_INK EQU 0C001h")
+            if labelTok is None and curTok is not None and curTok['name'] == 'ID' and curTok['value'].lower() in ('equ', 'db', 'dw', 'ds', 'org'):
+                labelTok = idTok
+                idTok = curTok
+                curTok = get_next_tok()
 
             while curTok is not None and curTok['name'] != 'NEWLINE':
                 if curTok['name'] in ('ID', 'STRING', 'NUMBER'):

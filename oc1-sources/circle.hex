@@ -1,11 +1,6 @@
 @0000       // Start at address 0x0000
 C3 10 00    // JMP START
 
-@2000       // Start at address 0x2000
-00          // VAR_X:  DS 1
-00          // VAR_Y:  DS 1
-00 00       // VAR_D:  DS 2
-
 @0010       // Start at address 0x0010
 31 FF 3F    // LXI SP, 0x3FFF  ; Initialize Stack Pointer to top of RAM
 3E FF       // MVI A, 0xFF     ; Ink color (White)
