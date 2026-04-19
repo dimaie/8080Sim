@@ -1,6 +1,6 @@
-from src.parser import Parser
-from src.assembler import Assembler
-from src.sim8080 import CPU8080
+from parser import Parser
+from assembler import Assembler
+from sim8080 import CPU8080
 
 
 class Debugger:

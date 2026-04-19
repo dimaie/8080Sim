@@ -1,11 +1,14 @@
 import tkinter as tk
 from tkinter import ttk
 from tkinter import filedialog
+import traceback
 
-from src.debugger import Debugger
-from src.code_editor import CodeEditor
-from src.memory_panel import MemoryPanel, StackPanel
-from src.registers_panel import RegistersPanel
+from debugger import Debugger
+from code_editor import CodeEditor
+from memory_panel import MemoryPanel, StackPanel
+from registers_panel import RegistersPanel
+from assembler import Assembler
+from parser import Parser
 
 class App(tk.Tk):
     def __init__(self):
@@ -32,6 +35,7 @@ class App(tk.Tk):
         self.file_menu.add_command(label="Open", accelerator="Ctrl+O", command=self.on_open)
         self.file_menu.add_command(label="Save", accelerator="Ctrl+S", command=self.on_save)
         self.file_menu.add_command(label="Save As..", accelerator="Ctrl+Shift+S", command=self.on_save_as)
+        self.file_menu.add_command(label="Generate..", accelerator="Ctrl+G", command=self.on_generate)
         self.file_menu.add_separator()
         self.file_menu.add_command(label="Exit", accelerator="Ctrl+Q", command=self.on_exit)
         menubar.add_cascade(label="Files", menu=self.file_menu)
@@ -50,6 +54,7 @@ class App(tk.Tk):
         self.bind("<Control-o>", self.on_open)
         self.bind("<Control-s>", self.on_save)
         self.bind("<Control-S>", self.on_save_as) # Shift+S
+        self.bind("<Control-g>", self.on_generate)
         self.bind("<Control-q>", self.on_exit)
         
         self.bind("<F5>", self.on_run)
@@ -157,6 +162,7 @@ class App(tk.Tk):
         
         self.file_menu.entryconfig("Save", state=state_val)
         self.file_menu.entryconfig("Save As..", state=state_val)
+        self.file_menu.entryconfig("Generate..", state=state_val)
 
         if self.debugger.running:
             self.debug_menu.entryconfig("Run", state=tk.DISABLED)
@@ -183,6 +189,7 @@ class App(tk.Tk):
                 self.set_status_success()
             return True
         except Exception as e:
+            traceback.print_exc()
             if not quiet:
                 self.set_status_fail(str(e))
             return False
@@ -226,6 +233,55 @@ class App(tk.Tk):
         if file_path:
             self.current_file = file_path
             self.on_save()
+        return "break"
+
+    def on_generate(self, event=None):
+        if not self.code_editor.get_text().strip():
+            return "break"
+            
+        if self.debugger.is_dirty:
+            if not self.compile_code(quiet=True):
+                return "break"
+                
+        file_path = filedialog.asksaveasfilename(defaultextension=".hex", filetypes=[("HEX Files", "*.hex"), ("All Files", "*.*")])
+        if not file_path:
+            return "break"
+            
+        try:
+            # Re-assemble locally to guarantee access to the layout chunks
+            parser = Parser()
+            assembler = Assembler()
+            source_lines = parser.parse(self.code_editor.get_text())
+            assembler.assemble(source_lines)
+            
+            lines = self.code_editor.get_text().split('\n')
+            out = []
+            last_addr = -1
+            
+            for chunk in assembler.assembled_chunks:
+                addr = chunk['addr']
+                length = chunk['length']
+                
+                if addr != last_addr:
+                    if out: out.append("")
+                    out.append(f"@{addr:04X}       // Start at address 0x{addr:04X}")
+                    
+                mem_bytes = assembler.memory[addr : addr + length]
+                hex_str = ' '.join(f"{b:02X}" for b in mem_bytes)
+                source_line = lines[chunk['line'] - 1].strip()
+                
+                out.append(f"{hex_str:<11} // {source_line}")
+                last_addr = addr + length
+                
+            with open(file_path, "w", encoding="utf-8") as f:
+                f.write('\n'.join(out) + '\n')
+                
+            self.set_status_success()
+            self.status_var.set(f"Generated HEX to {file_path}")
+        except Exception as e:
+            traceback.print_exc()
+            self.set_status_fail(f"Failed to generate HEX: {e}")
+            
         return "break"
 
     def on_exit(self, event=None):
@@ -291,9 +347,6 @@ class App(tk.Tk):
         return "break"
 
     def on_stop(self, event=None):
-        if not self.debugger.running:
-            return "break"
-            
         self.debugger.stop()
         self.animating = False
         self.update_menu_states()

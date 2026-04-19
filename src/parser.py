@@ -90,6 +90,8 @@ class Lexer:
             is_number = False
             if val_lower.endswith('h') and val_lower[:-1] and all(c in '0123456789abcdef' for c in val_lower[:-1]):
                 is_number = True
+            elif val_lower.startswith('0x') and len(val_lower) > 2 and all(c in '0123456789abcdef' for c in val_lower[2:]):
+                is_number = True
             elif val_lower.endswith('b') and val_lower[:-1] and all(c in '01' for c in val_lower[:-1]):
                 is_number = True
             elif val_lower.isdecimal():

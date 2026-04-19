@@ -17,10 +17,10 @@ class RegistersPanel(tk.Frame):
         cpu_table = tk.Frame(self)
         cpu_table.pack(anchor="w", pady=5)
         
-        registers = ['a', 'b', 'c', 'd', 'e', 'h', 'l', 'pc', 'sp', 'halted']
+        registers = ['a', 'b', 'c', 'd', 'e', 'h', 'l', 'm', 'pc', 'sp', 'hlt']
         
         for i, reg in enumerate(registers):
-            row, col = divmod(i, 5)
+            row, col = divmod(i, 6)
             tk.Label(cpu_table, text=f"{reg}:", bg="#ffffc1", width=6, anchor="e", font=("Courier", 10, "bold"), relief="ridge").grid(row=row, column=col*2, padx=1, pady=1)
             
             var = tk.StringVar(value="")
@@ -50,7 +50,13 @@ class RegistersPanel(tk.Frame):
     def on_reg_edit(self, reg):
         try:
             val = int(self.cpu_state_vars[reg].get(), 16)
-            self.app.debugger.set_register(reg, val)
+            if reg == 'm':
+                state = self.app.debugger.get_state()
+                hl = (state.h << 8) | state.l
+                self.app.debugger.set_memory(hl, val & 0xFF)
+            else:
+                target_reg = 'halted' if reg == 'hlt' else reg
+                self.app.debugger.set_register(target_reg, val)
         except ValueError:
             pass
         self.app.update_ui()
@@ -81,9 +87,14 @@ class RegistersPanel(tk.Frame):
         self.cpu_state_vars['e'].set(f"{state.e:02X}")
         self.cpu_state_vars['h'].set(f"{state.h:02X}")
         self.cpu_state_vars['l'].set(f"{state.l:02X}")
+        
+        hl = (state.h << 8) | state.l
+        m_val = self.app.debugger.memory[hl]
+        self.cpu_state_vars['m'].set(f"{m_val:02X}")
+        
         self.cpu_state_vars['pc'].set(f"{state.pc:04X}")
         self.cpu_state_vars['sp'].set(f"{state.sp:04X}")
-        self.cpu_state_vars['halted'].set(str(int(state.halted)))
+        self.cpu_state_vars['hlt'].set(str(int(state.halted)))
         
         f_val = state.f
         self.flags_state_vars['Sign'].set(str((f_val >> 7) & 1))
@@ -92,11 +103,17 @@ class RegistersPanel(tk.Frame):
         self.flags_state_vars['Carry'].set(str(f_val & 1))
 
         for reg in modified_regs:
-            if reg == 'f':
+            ui_reg = 'hlt' if reg == 'halted' else reg
+            if ui_reg == 'f':
                 for flag_entry in self.flags_entries.values():
                     flag_entry.config(bg="#d2f8d2")
                     self.last_highlighted_entries.append(flag_entry)
-            elif reg in self.cpu_state_entries:
-                entry = self.cpu_state_entries[reg]
+            elif ui_reg in self.cpu_state_entries:
+                entry = self.cpu_state_entries[ui_reg]
                 entry.config(bg="#d2f8d2")
                 self.last_highlighted_entries.append(entry)
+
+        if hl in self.app.debugger.last_modified_mem:
+            entry = self.cpu_state_entries['m']
+            entry.config(bg="#d2f8d2")
+            self.last_highlighted_entries.append(entry)
