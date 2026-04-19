@@ -267,10 +267,12 @@ class App(tk.Tk):
             lines = self.code_editor.get_text().split('\n')
             out = []
             last_addr = -1
+            total_bytes = 0
             
             for chunk in assembler.assembled_chunks:
                 addr = chunk['addr']
                 length = chunk['length']
+                total_bytes += length
                 
                 if addr != last_addr:
                     if out: out.append("")
@@ -287,7 +289,7 @@ class App(tk.Tk):
                 f.write('\n'.join(out) + '\n')
                 
             self.set_status_success()
-            self.status_var.set(f"Generated HEX to {file_path}")
+            self.status_var.set(f"Generated HEX to {file_path} ({total_bytes} bytes)")
         except Exception as e:
             traceback.print_exc()
             self.set_status_fail(f"Failed to generate HEX: {e}")

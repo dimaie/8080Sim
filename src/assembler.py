@@ -85,21 +85,21 @@ class Assembler:
                 self._assemblyError(sl['pos'], str(e))
 
     def _applyFixups(self):
-        for label, fixups in self.labelToFixups.items():
-            addr = self.labelToAddr.get(label)
-            if addr is None:
+        for expr, fixups in self.labelToFixups.items():
+            val, defined = self._evalExpr(expr)
+            if not defined or val is None:
                 user = fixups[0]
-                self._assemblyError(user['pos'], f"label '{label}' used but not defined")
+                self._assemblyError(user['pos'], f"undefined label or invalid expression '{expr}'")
             
-            addrLowByte = addr & 0xff
-            addrHighByte = (addr >> 8) & 0xff
+            addrLowByte = val & 0xff
+            addrHighByte = (val >> 8) & 0xff
             
             for user in fixups:
                 offset = user.get('offset', 1)
                 bits = user.get('bits', 16)
                 
-                if bits == 8 and not (-128 <= addr <= 255):
-                    self._assemblyError(user['pos'], f"label '{label}' value {addr} out of range for 8-bit value")
+                if bits == 8 and not (-128 <= val <= 255):
+                    self._assemblyError(user['pos'], f"value {val} out of range for 8-bit value")
                 
                 self.memory[user['addr'] + offset] = addrLowByte
                 if bits == 16:
@@ -368,24 +368,63 @@ class Assembler:
         else:
             self._assemblyError(sl['pos'], f"invalid register {arg}")
 
-    def _argImm(self, sl, arg, bits=8):
-        n = self._parseNumber(arg)
-        if n is None:
-            if isinstance(arg, str) and arg in self.labelToAddr:
-                n = self.labelToAddr[arg]
+    def _evalExpr(self, expr_str):
+        if not isinstance(expr_str, str):
+            n = self._parseNumber(expr_str)
+            return (n, True) if n is not None else (None, False)
+
+        token_pat = r"'[^']*'|\"[^\"]*\"|[a-zA-Z_][a-zA-Z_0-9]*|0x[0-9a-fA-F]+|[0-9a-fA-F]+[hH]|[01]+[bB]|[0-9]+|[-+*/()&|^]"
+        tokens = re.findall(token_pat, expr_str)
+        if not tokens:
+            return None, False
+
+        py_expr = []
+        is_fully_defined = True
+        for t in tokens:
+            if re.match(r'^[-+*/()&|^]$', t):
+                py_expr.append(t)
+            elif t.startswith("'") or t.startswith('"'):
+                s = t[1:-1]
+                if len(s) == 1:
+                    py_expr.append(str(ord(s)))
+                elif len(s) == 2:
+                    py_expr.append(str((ord(s[0]) << 8) | ord(s[1])))
+                else:
+                    return None, False
             else:
-                val_str = f"'{''.join(arg)}'" if isinstance(arg, list) else arg
-                self._assemblyError(sl['pos'], f"invalid immediate or undefined label {val_str}")
+                n = self._parseNumber(t)
+                if n is not None:
+                    py_expr.append(str(n))
+                elif t in self.labelToAddr:
+                    py_expr.append(str(self.labelToAddr[t]))
+                else:
+                    is_fully_defined = False
+                    py_expr.append("0")
+        
+        if not is_fully_defined:
+            return 0, False
+            
+        try:
+            val = eval(" ".join(py_expr), {"__builtins__": None}, {})
+            return int(val), True
+        except Exception:
+            return None, False
+
+    def _argImm(self, sl, arg, bits=8):
+        val, defined = self._evalExpr(arg)
+        if val is None or not defined:
+            val_str = f"'{''.join(arg)}'" if isinstance(arg, list) else arg
+            self._assemblyError(sl['pos'], f"invalid immediate or undefined label {val_str}")
             
         min_val = -(1 << (bits - 1))
         max_val = (1 << bits) - 1
-        if not (min_val <= n <= max_val):
-            self._assemblyError(sl['pos'], f"immediate {n} out of range for {bits}-bit value")
+        if not (min_val <= val <= max_val):
+            self._assemblyError(sl['pos'], f"immediate {val} out of range for {bits}-bit value")
             
-        return n & ((1 << bits) - 1)
+        return val & ((1 << bits) - 1)
 
     def _argLabel(self, sl, arg, curAddr, bits=16, offset=1):
-        if not isinstance(arg, str) or not re.match(r'^[a-zA-Z_][a-zA-Z_0-9]*', arg):
+        if not isinstance(arg, str):
             val_str = f"'{''.join(arg)}'" if isinstance(arg, list) else arg
             self._assemblyError(sl['pos'], f"invalid label name {val_str}")
 
@@ -399,17 +438,22 @@ class Assembler:
             print(f"fixups for '{arg}': {self.labelToFixups[arg]}")
 
     def _argImmOrLabel(self, sl, arg, curAddr, bits=16, offset=1):
-        n = self._parseNumber(arg)
-        if n is None:
+        val, defined = self._evalExpr(arg)
+        
+        if val is None:
+            val_str = f"'{''.join(arg)}'" if isinstance(arg, list) else arg
+            self._assemblyError(sl['pos'], f"invalid expression {val_str}")
+            
+        if not defined:
             self._argLabel(sl, arg, curAddr, bits, offset)
             return 0
             
         min_val = -(1 << (bits - 1))
         max_val = (1 << bits) - 1
-        if not (min_val <= n <= max_val):
-            self._assemblyError(sl['pos'], f"immediate {n} out of range for {bits}-bit value")
+        if not (min_val <= val <= max_val):
+            self._assemblyError(sl['pos'], f"immediate {val} out of range for {bits}-bit value")
             
-        return n & ((1 << bits) - 1)
+        return val & ((1 << bits) - 1)
 
     def _parseNumber(self, n):
         if isinstance(n, list):

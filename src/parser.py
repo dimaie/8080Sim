@@ -22,7 +22,7 @@ class Lexer:
         self.buf = buf
         self.lineCount = 1
         self.lastNewlinePos = 0
-        self._ops = {':', ',', '[', ']'}
+        self._ops = {':', ',', '[', ']', '+', '-', '*', '/', '(', ')', '&', '|', '^'}
 
     def token(self):
         self._skipNonTokens()
@@ -214,12 +214,28 @@ class Parser:
                 curTok = get_next_tok()
 
             while curTok is not None and curTok['name'] != 'NEWLINE':
-                if curTok['name'] in ('ID', 'STRING', 'NUMBER'):
-                    args.append(curTok['value'])
-                else:
-                    self._parseError(curTok['pos'], f"want arg; got \"{curTok['value']}\"")
+                arg_tokens = []
+                while curTok is not None and curTok['name'] not in ('NEWLINE', ','):
+                    if curTok['name'] in ('ID', 'STRING', 'NUMBER', '+', '-', '*', '/', '(', ')', '&', '|', '^'):
+                        arg_tokens.append(curTok)
+                    else:
+                        self._parseError(curTok['pos'], f"unexpected token in argument: \"{curTok['value']}\"")
+                    curTok = get_next_tok()
 
-                curTok = get_next_tok()
+                if not arg_tokens:
+                    self._parseError(idTok['pos'], "expected argument")
+
+                if len(arg_tokens) == 1 and arg_tokens[0]['name'] == 'STRING':
+                    args.append(arg_tokens[0]['value'])
+                else:
+                    expr_str = ""
+                    for t in arg_tokens:
+                        if t['name'] == 'STRING':
+                            expr_str += f"'{''.join(t['value'])}'"
+                        else:
+                            expr_str += str(t['value'])
+                    args.append(expr_str)
+
                 if curTok is not None and curTok['name'] == ',':
                     curTok = get_next_tok()
 
