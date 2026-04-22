@@ -1,6 +1,9 @@
 import tkinter as tk
 from tkinter import ttk
 from tkinter import filedialog
+from tkinter import messagebox
+import threading
+import struct
 import traceback
 
 from debugger import Debugger
@@ -36,6 +39,7 @@ class App(tk.Tk):
         self.file_menu.add_command(label="Save", accelerator="Ctrl+S", command=self.on_save)
         self.file_menu.add_command(label="Save As..", accelerator="Ctrl+Shift+S", command=self.on_save_as)
         self.file_menu.add_command(label="Generate..", accelerator="Ctrl+G", command=self.on_generate)
+        self.file_menu.add_command(label="Send..", command=self.on_send)
         self.file_menu.add_separator()
         self.file_menu.add_command(label="Exit", accelerator="Ctrl+Q", command=self.on_exit)
         menubar.add_cascade(label="Files", menu=self.file_menu)
@@ -173,6 +177,7 @@ class App(tk.Tk):
         self.file_menu.entryconfig("Save", state=state_val)
         self.file_menu.entryconfig("Save As..", state=state_val)
         self.file_menu.entryconfig("Generate..", state=state_val)
+        self.file_menu.entryconfig("Send..", state=state_val)
 
         if self.debugger.running:
             self.debug_menu.entryconfig("Run", state=tk.DISABLED)
@@ -261,32 +266,14 @@ class App(tk.Tk):
             # Re-assemble locally to guarantee access to the layout chunks
             parser = Parser()
             assembler = Assembler()
-            source_lines = parser.parse(self.code_editor.get_text())
+            source_text = self.code_editor.get_text()
+            source_lines = parser.parse(source_text)
             assembler.assemble(source_lines)
             
-            lines = self.code_editor.get_text().split('\n')
-            out = []
-            last_addr = -1
-            total_bytes = 0
-            
-            for chunk in assembler.assembled_chunks:
-                addr = chunk['addr']
-                length = chunk['length']
-                total_bytes += length
-                
-                if addr != last_addr:
-                    if out: out.append("")
-                    out.append(f"@{addr:04X}       // Start at address 0x{addr:04X}")
-                    
-                mem_bytes = assembler.memory[addr : addr + length]
-                hex_str = ' '.join(f"{b:02X}" for b in mem_bytes)
-                source_line = lines[chunk['line'] - 1].strip()
-                
-                out.append(f"{hex_str:<11} // {source_line}")
-                last_addr = addr + length
+            hex_content, total_bytes = self._generate_hex_content(assembler, source_text)
                 
             with open(file_path, "w", encoding="utf-8") as f:
-                f.write('\n'.join(out) + '\n')
+                f.write(hex_content)
                 
             self.set_status_success()
             self.status_var.set(f"Generated HEX to {file_path} ({total_bytes} bytes)")
@@ -295,6 +282,130 @@ class App(tk.Tk):
             self.set_status_fail(f"Failed to generate HEX: {e}")
             
         return "break"
+
+    def _generate_hex_content(self, assembler, source_text):
+        lines = source_text.split('\n')
+        out = []
+        last_addr = -1
+        total_bytes = 0
+        
+        for chunk in assembler.assembled_chunks:
+            addr = chunk['addr']
+            length = chunk['length']
+            total_bytes += length
+            
+            if addr != last_addr:
+                if out: out.append("")
+                out.append(f"@{addr:04X}       // Start at address 0x{addr:04X}")
+                
+            mem_bytes = assembler.memory[addr : addr + length]
+            hex_str = ' '.join(f"{b:02X}" for b in mem_bytes)
+            source_line = lines[chunk['line'] - 1].strip()
+            
+            out.append(f"{hex_str:<11} // {source_line}")
+            last_addr = addr + length
+            
+        return '\n'.join(out) + '\n', total_bytes
+
+    def on_send(self, event=None):
+        if not self.code_editor.get_text().strip():
+            return "break"
+            
+        if self.debugger.is_dirty:
+            if not self.compile_code(quiet=True):
+                return "break"
+                
+        try:
+            import serial
+            import serial.tools.list_ports
+        except ImportError:
+            messagebox.showerror("Dependency Error", "pyserial is not installed. Please run 'pip install pyserial' first.")
+            return "break"
+            
+        ports = [port.device for port in serial.tools.list_ports.comports()]
+        if not ports:
+            messagebox.showerror("No Ports", "No serial ports found!")
+            return "break"
+            
+        dialog = tk.Toplevel(self)
+        dialog.title("Send to SAP-3")
+        dialog_w, dialog_h = 300, 150
+        pos_x = self.winfo_x() + (self.winfo_width() // 2) - (dialog_w // 2)
+        pos_y = self.winfo_y() + (self.winfo_height() // 2) - (dialog_h // 2)
+        dialog.geometry(f"{dialog_w}x{dialog_h}+{pos_x}+{pos_y}")
+        dialog.transient(self)
+        dialog.grab_set()
+        
+        tk.Label(dialog, text="Select COM Port:").pack(pady=10)
+        
+        port_var = tk.StringVar(value=ports[0])
+        port_cb = ttk.Combobox(dialog, textvariable=port_var, values=ports, state="readonly")
+        port_cb.pack(pady=5)
+        
+        def do_send():
+            selected_port = port_var.get()
+            dialog.destroy()
+            self.start_serial_send(selected_port)
+            
+        tk.Button(dialog, text="Send", command=do_send).pack(pady=20)
+        return "break"
+
+    def start_serial_send(self, port):
+        try:
+            parser = Parser()
+            assembler = Assembler()
+            source_text = self.code_editor.get_text()
+            source_lines = parser.parse(source_text)
+            assembler.assemble(source_lines)
+            
+            if not assembler.assembled_chunks:
+                self.set_status_fail("No code to send.")
+                return
+                
+            min_addr = min(chunk['addr'] for chunk in assembler.assembled_chunks)
+            max_addr = max(chunk['addr'] + chunk['length'] - 1 for chunk in assembler.assembled_chunks)
+            
+            length = (max_addr - min_addr) + 1
+            payload = bytearray(length)
+            
+            for chunk in assembler.assembled_chunks:
+                addr = chunk['addr']
+                for i in range(chunk['length']):
+                    payload[addr - min_addr + i] = assembler.memory[addr + i]
+                    
+            header = struct.pack('<HH', min_addr, length)
+            checksum = (sum(header) + sum(payload)) % 256
+            full_data = header + payload + bytes([checksum])
+            
+            self.set_status_ready()
+            self.status_var.set(f"Waiting for SAP-3 ACK on {port}. Type 'R' on monitor...")
+            
+            def send_thread():
+                try:
+                    import serial
+                    with serial.Serial(port, 115200, stopbits=serial.STOPBITS_TWO, timeout=None) as ser:
+                        while ser.read(1) != b'\x06':
+                            pass
+                            
+                        self.after(0, lambda: self.status_var.set("Sending data..."))
+                        ser.write(full_data)
+                        
+                        resp = ser.read(1)
+                        if resp == b'\x06':
+                            self.after(0, lambda: self.status_var.set(f"Successfully sent {length} bytes to SAP-3"))
+                            self.after(0, self.set_status_success)
+                        elif resp == b'\x15':
+                            self.after(0, lambda: self.set_status_fail("SAP-3 reported checksum mismatch."))
+                        else:
+                            self.after(0, lambda: self.set_status_fail(f"Unknown response from SAP-3: {resp}"))
+                except Exception as e:
+                    self.after(0, lambda: self.set_status_fail(f"Serial Error: {e}"))
+                    
+            threading.Thread(target=send_thread, daemon=True).start()
+            
+        except Exception as e:
+            traceback.print_exc()
+            self.set_status_fail(f"Failed to prepare data: {e}")
 
     def on_exit(self, event=None):
         self.destroy()
