@@ -17,6 +17,8 @@ class Debugger:
         self.last_modified_regs = set()
         self.last_modified_mem = set()
         self.tokens = []
+        self.start_addr = 0
+        self.last_compiled_chunks = []
         self.reset()
 
     def toggle_breakpoint(self, line_num):
@@ -38,8 +40,22 @@ class Debugger:
             self.addr_to_line = asm.addrToLine
             self.line_to_addr = {line: addr for addr, line in self.addr_to_line.items()}
             self.label_to_addr = label_to_addr
-            self.original_memory = list(mem)
             
+            for chunk in self.last_compiled_chunks:
+                for i in range(chunk['length']):
+                    self.original_memory[chunk['addr'] + i] = 0
+                    
+            for chunk in asm.assembled_chunks:
+                for i in range(chunk['length']):
+                    self.original_memory[chunk['addr'] + i] = mem[chunk['addr'] + i]
+                    
+            self.last_compiled_chunks = asm.assembled_chunks
+            
+            if asm.assembled_chunks:
+                self.start_addr = asm.assembled_chunks[0]['addr']
+            else:
+                self.start_addr = 0
+                
             self.reset()
             self.is_dirty = False
             
@@ -62,7 +78,7 @@ class Debugger:
         def mem_read(addr): return self.memory[addr]
             
         CPU8080.init(mem_write_tracker, mem_read)
-        CPU8080.set('pc', 0)
+        CPU8080.set('pc', self.start_addr)
 
     def set_register(self, reg, val):
         CPU8080.set(reg, val)

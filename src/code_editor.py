@@ -4,6 +4,9 @@ Code Editor component handling the text area, syntax highlighting, and breakpoin
 import tkinter as tk
 from tkinter import ttk
 
+INSTRUCTIONS = {'adc', 'add', 'aci', 'adi', 'ana', 'ani', 'call', 'cc', 'cnc', 'cnz', 'cm', 'cp', 'cpe', 'cpo', 'cz', 'cma', 'cmc', 'cmp', 'cpi', 'dad', 'db', 'ds', 'dw', 'dcr', 'dcx', 'equ', 'hlt', 'in', 'inr', 'inx', 'jc', 'jm', 'jmp', 'jnc', 'jnz', 'jp', 'jpe', 'jpo', 'jz', 'lda', 'ldax', 'lhld', 'lxi', 'mov', 'mvi', 'nop', 'ora', 'ori', 'out', 'pchl', 'pop', 'push', 'rc', 'ret', 'rnc', 'rnz', 'rm', 'rp', 'rpe', 'rpo', 'rz', 'ral', 'rar', 'rlc', 'rrc', 'sbb', 'sbi', 'shld', 'sphl', 'sta', 'stax', 'stc', 'sub', 'sui', 'xchg', 'xra', 'xri', 'xthl', 'org'}
+REGISTERS = {'a', 'b', 'c', 'd', 'e', 'h', 'l', 'm', 'sp', 'psw', 'bc', 'de', 'hl'}
+
 class CodeEditor(tk.Frame):
     def __init__(self, parent, app):
         super().__init__(parent)
@@ -77,8 +80,6 @@ class CodeEditor(tk.Frame):
         for tag in ["syntax_comment", "syntax_string", "syntax_label", "syntax_instruction", "syntax_register", "syntax_number"]:
             self.code_text.tag_remove(tag, "1.0", tk.END)
 
-        instructions = {'adc', 'add', 'aci', 'adi', 'ana', 'ani', 'call', 'cc', 'cnc', 'cnz', 'cm', 'cp', 'cpe', 'cpo', 'cz', 'cma', 'cmc', 'cmp', 'cpi', 'dad', 'db', 'ds', 'dw', 'dcr', 'dcx', 'equ', 'hlt', 'in', 'inr', 'inx', 'jc', 'jm', 'jmp', 'jnc', 'jnz', 'jp', 'jpe', 'jpo', 'jz', 'lda', 'ldax', 'lhld', 'lxi', 'mov', 'mvi', 'nop', 'ora', 'ori', 'out', 'pchl', 'pop', 'push', 'rc', 'ret', 'rnc', 'rnz', 'rm', 'rp', 'rpe', 'rpo', 'rz', 'ral', 'rar', 'rlc', 'rrc', 'sbb', 'sbi', 'shld', 'sphl', 'sta', 'stax', 'stc', 'sub', 'sui', 'xchg', 'xra', 'xri', 'xthl', 'org'}
-        registers = {'a', 'b', 'c', 'd', 'e', 'h', 'l', 'm', 'sp', 'psw', 'bc', 'de', 'hl'}
         line_counters = {}
         
         for tok in self.app.debugger.tokens:
@@ -94,8 +95,8 @@ class CodeEditor(tk.Frame):
             elif name == 'NUMBER': tag = 'syntax_number'
             elif name == 'ID':
                 lower_val = val.lower()
-                if lower_val in instructions: tag = 'syntax_instruction'
-                elif lower_val in registers: tag = 'syntax_register'
+                if lower_val in INSTRUCTIONS: tag = 'syntax_instruction'
+                elif lower_val in REGISTERS: tag = 'syntax_register'
                 else: tag = 'syntax_label'
                     
             if tag:
@@ -205,9 +206,7 @@ class CodeEditor(tk.Frame):
         instr = parts[0]
         args_str = " ".join(parts[1:])
         
-        instructions = {'ADC', 'ADD', 'ACI', 'ADI', 'ANA', 'ANI', 'CALL', 'CC', 'CNC', 'CNZ', 'CM', 'CP', 'CPE', 'CPO', 'CZ', 'CMA', 'CMC', 'CMP', 'CPI', 'DAD', 'DCR', 'DCX', 'HLT', 'IN', 'INR', 'INX', 'JC', 'JM', 'JMP', 'JNC', 'JNZ', 'JP', 'JPE', 'JPO', 'JZ', 'LDA', 'LDAX', 'LHLD', 'LXI', 'MOV', 'MVI', 'NOP', 'ORA', 'ORI', 'OUT', 'PCHL', 'POP', 'PUSH', 'RC', 'RET', 'RNC', 'RNZ', 'RM', 'RP', 'RPE', 'RPO', 'RZ', 'RAL', 'RAR', 'RLC', 'RRC', 'SBB', 'SBI', 'SHLD', 'SPHL', 'STA', 'STAX', 'STC', 'SUB', 'SUI', 'XCHG', 'XRA', 'XRI', 'XTHL'}
-        
-        if instr.upper() not in instructions and len(parts) > 1:
+        if instr.lower() not in INSTRUCTIONS and len(parts) > 1:
             instr = parts[1]
             args_str = " ".join(parts[2:])
             

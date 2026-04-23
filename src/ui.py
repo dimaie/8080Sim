@@ -5,6 +5,12 @@ from tkinter import messagebox
 import threading
 import struct
 import traceback
+import importlib
+import inspect
+import pkgutil
+import os
+import sys
+import types
 
 from debugger import Debugger
 from code_editor import CodeEditor
@@ -24,12 +30,15 @@ class App(tk.Tk):
         self.current_file = None
         self.stack_panel = None
         self.ref_guide_window = None
+        self.plugins = []
 
         self.debugger = Debugger()
 
         self.create_widgets()
+        self.load_plugins()
         self.set_status_ready()
         self.update_menu_states()
+        self.update_ui()
 
     def create_widgets(self):
         # --- Menu Bar ---
@@ -53,6 +62,10 @@ class App(tk.Tk):
         self.debug_menu.add_command(label="Animate", accelerator="F8", command=self.on_animate)
         menubar.add_cascade(label="Debug", menu=self.debug_menu)
         
+        # --- Plugins Menu ---
+        self.plugins_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="Plugins", menu=self.plugins_menu)
+
         self.config(menu=menubar)
         
         # --- Keyboard Bindings ---
@@ -150,6 +163,52 @@ class App(tk.Tk):
         mem_scrollbar.pack(side="right", fill="y")
         
         self.add_memory_panel()
+
+    def load_plugins(self):
+        src_dir = os.path.dirname(os.path.abspath(__file__))
+        plugins_path = os.path.join(src_dir, "plugins")
+        
+        if not os.path.isdir(plugins_path):
+            self.plugins_menu.add_command(label="Plugin system unavailable", state=tk.DISABLED)
+            return
+
+        # Create a unique virtual package to avoid collisions with any other 'plugins' module
+        # (e.g., debugpy or global site-packages might already have a 'plugins' module loaded)
+        pkg_name = "sim8080_plugins"
+        if pkg_name not in sys.modules:
+            pkg = types.ModuleType(pkg_name)
+            pkg.__path__ = [plugins_path]
+            pkg.__package__ = pkg_name
+            sys.modules[pkg_name] = pkg
+
+        try:
+            base_module = importlib.import_module(f"{pkg_name}.base_plugin")
+            BasePlugin = base_module.BasePlugin
+        except ImportError as e:
+            print(f"Plugin system not available: {e}")
+            self.plugins_menu.add_command(label="Plugin system unavailable", state=tk.DISABLED)
+            return
+
+        plugin_count = 0
+        for _, module_name, _ in pkgutil.iter_modules([plugins_path]):
+            if module_name == 'base_plugin':
+                continue
+            try:
+                module = importlib.import_module(f"{pkg_name}.{module_name}")
+                for attr_name, attr_val in inspect.getmembers(module, inspect.isclass):
+                    if issubclass(attr_val, BasePlugin) and attr_val is not BasePlugin:
+                        plugin_instance = attr_val(self)
+                        self.plugins.append(plugin_instance)
+                        self.plugins_menu.add_command(label=plugin_instance.name, command=plugin_instance.show_window)
+                        plugin_instance.start()
+                        plugin_instance.on_reset()
+                        plugin_count += 1
+            except Exception as e:
+                print(f"Failed to load plugin {module_name}: {e}")
+                traceback.print_exc()
+                
+        if plugin_count == 0:
+            self.plugins_menu.add_command(label="No plugins loaded", state=tk.DISABLED)
 
     def set_status_ready(self):
         self.status_var.set("Ready to run")
@@ -410,6 +469,8 @@ class App(tk.Tk):
             self.set_status_fail(f"Failed to prepare data: {e}")
 
     def on_exit(self, event=None):
+        for p in self.plugins:
+            p.stop()
         self.destroy()
 
     def on_reset(self, event=None):
@@ -422,6 +483,8 @@ class App(tk.Tk):
         else:
             self.debugger.reset()
             self.set_status_ready()
+            for p in self.plugins:
+                p.on_reset()
             self.update_ui()
         self.update_menu_states()
         return "break"
