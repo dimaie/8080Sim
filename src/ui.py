@@ -23,6 +23,7 @@ class App(tk.Tk):
         self.memory_panels = []
         self.current_file = None
         self.stack_panel = None
+        self.ref_guide_window = None
 
         self.debugger = Debugger()
 
@@ -66,6 +67,7 @@ class App(tk.Tk):
         self.bind("<Shift-F5>", self.on_stop)
         self.bind("<Control-r>", self.on_reset)
         self.bind("<F8>", self.on_animate)
+        self.bind("<F1>", self.on_f1_pressed)
 
         # --- Status Bar ---
         status_frame = tk.Frame(self)
@@ -423,6 +425,39 @@ class App(tk.Tk):
             self.update_ui()
         self.update_menu_states()
         return "break"
+
+    def on_f1_pressed(self, event=None):
+        instr, args_str = self.code_editor.get_instruction_under_cursor()
+        self.show_reference_guide(instr, args_str)
+        return "break"
+
+    def show_reference_guide(self, instr=None, args_str=None):
+        if self.ref_guide_window is None or not self.ref_guide_window.winfo_exists():
+            from reference_guide import ReferenceGuide
+            self.ref_guide_window = ReferenceGuide(self)
+            
+            self.update_idletasks()
+            main_x = self.winfo_x()
+            main_y = self.winfo_y()
+            main_w = self.winfo_width()
+            
+            ref_x = main_x + main_w + 10
+            ref_y = main_y
+            self.ref_guide_window.geometry(f"600x500+{ref_x}+{ref_y}")
+            self.ref_guide_window.attributes("-topmost", True)
+            
+        self.ref_guide_window.deiconify()
+        self.ref_guide_window.lift()
+        self.ref_guide_window.focus_force()
+        
+        if instr:
+            self.ref_guide_window.show_instruction(instr, args_str)
+
+    def sync_reference_guide(self):
+        if self.ref_guide_window is not None and self.ref_guide_window.winfo_exists():
+            instr, args_str = self.code_editor.get_instruction_under_cursor()
+            if instr:
+                self.ref_guide_window.show_instruction(instr, args_str)
 
     def on_step(self, event=None):
         if self.debugger.running or not self.code_editor.get_text().strip():

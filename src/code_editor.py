@@ -168,3 +168,47 @@ class CodeEditor(tk.Frame):
         index = self.code_text.index(tk.INSERT)
         line, col = index.split('.')
         self.app.update_cursor_position(line, int(col) + 1)
+        self.app.sync_reference_guide()
+        
+    def get_instruction_under_cursor(self):
+        index = self.code_text.index(tk.INSERT)
+        line, col = map(int, index.split('.'))
+        line_text = self.code_text.get(f"{line}.0", f"{line}.end")
+        
+        if ";" in line_text:
+            comment_pos = line_text.find(";")
+            if col > comment_pos:
+                return None, None
+            line_text = line_text[:comment_pos]
+            
+        segments = line_text.split('!')
+        curr_pos = 0
+        target_segment = ""
+        
+        for seg in segments:
+            seg_len = len(seg)
+            if curr_pos <= col <= curr_pos + seg_len:
+                target_segment = seg
+                break
+            curr_pos += seg_len + 1
+            
+        if not target_segment.strip():
+            return None, None
+            
+        if ":" in target_segment:
+            target_segment = target_segment.split(":", 1)[1]
+            
+        parts = target_segment.strip().split()
+        if not parts:
+            return None, None
+            
+        instr = parts[0]
+        args_str = " ".join(parts[1:])
+        
+        instructions = {'ADC', 'ADD', 'ACI', 'ADI', 'ANA', 'ANI', 'CALL', 'CC', 'CNC', 'CNZ', 'CM', 'CP', 'CPE', 'CPO', 'CZ', 'CMA', 'CMC', 'CMP', 'CPI', 'DAD', 'DCR', 'DCX', 'HLT', 'IN', 'INR', 'INX', 'JC', 'JM', 'JMP', 'JNC', 'JNZ', 'JP', 'JPE', 'JPO', 'JZ', 'LDA', 'LDAX', 'LHLD', 'LXI', 'MOV', 'MVI', 'NOP', 'ORA', 'ORI', 'OUT', 'PCHL', 'POP', 'PUSH', 'RC', 'RET', 'RNC', 'RNZ', 'RM', 'RP', 'RPE', 'RPO', 'RZ', 'RAL', 'RAR', 'RLC', 'RRC', 'SBB', 'SBI', 'SHLD', 'SPHL', 'STA', 'STAX', 'STC', 'SUB', 'SUI', 'XCHG', 'XRA', 'XRI', 'XTHL'}
+        
+        if instr.upper() not in instructions and len(parts) > 1:
+            instr = parts[1]
+            args_str = " ".join(parts[2:])
+            
+        return instr, args_str
