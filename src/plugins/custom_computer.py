@@ -24,6 +24,7 @@ class CustomComputerPlugin(BasePlugin):
         self.frame_cnt = 0
         self._lut_cache = {}
         self.reg_labels = {}
+        self.color_swatches = {}
         
     def start(self):
         if self.running: return
@@ -138,6 +139,11 @@ class CustomComputerPlugin(BasePlugin):
             var = tk.StringVar(value="00")
             self.reg_labels[addr] = var
             tk.Label(frame, textvariable=var, font=("Courier", 10, "bold"), fg="#0055cc").pack(side=tk.LEFT)
+            
+            if addr in (0xC001, 0xC002, 0xC006):
+                swatch = tk.Label(frame, width=2, bg="black", relief="solid", borderwidth=1)
+                swatch.pack(side=tk.LEFT, padx=(5, 0))
+                self.color_swatches[addr] = swatch
 
     def hide_window(self):
         if self.window:
@@ -232,4 +238,9 @@ class CustomComputerPlugin(BasePlugin):
         else: self.canvas.itemconfig(self.img_id, image=self.photo_img)
             
         for i, val in enumerate(regs):
-            self.reg_labels[0xC001 + i].set(f"{val:02X}")
+            addr = 0xC001 + i
+            self.reg_labels[addr].set(f"{val:02X}")
+            if addr in self.color_swatches:
+                r, g, b = rgb332_to_rgb(val)
+                hex_color = f"#{r:02x}{g:02x}{b:02x}"
+                self.color_swatches[addr].config(bg=hex_color)
