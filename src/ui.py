@@ -261,6 +261,9 @@ class App(tk.Tk):
             # Validate existing breakpoints
             self.code_editor.update_breakpoints()
             
+            for p in self.plugins:
+                p.on_reset()
+                
             if not quiet:
                 self.set_status_success()
             return True
@@ -528,6 +531,11 @@ class App(tk.Tk):
             
         if self.debugger.is_dirty and not self.compile_code():
             return "break"
+            
+        for p in self.plugins:
+            if hasattr(p, 'pre_execute'):
+                p.pre_execute()
+                
         self.debugger.step()
         self.update_ui()
         return "break"
@@ -540,6 +548,10 @@ class App(tk.Tk):
             return "break"
         if self.debugger.get_state().halted:
             return "break"
+            
+        for p in self.plugins:
+            if hasattr(p, 'pre_execute'):
+                p.pre_execute()
             
         self.debugger.run()
         self.update_menu_states()
@@ -557,6 +569,10 @@ class App(tk.Tk):
             return "break"
         if self.debugger.get_state().halted:
             return "break"
+            
+        for p in self.plugins:
+            if hasattr(p, 'pre_execute'):
+                p.pre_execute()
             
         self.animating = True
         self.debugger.run()
@@ -579,12 +595,13 @@ class App(tk.Tk):
         if not self.debugger.running:
             return
             
-        if not self.debugger.execute_batch(100):
+        # Throttle batch execution to simulate ~2 MHz clock speed (approx 2000 instructions per ms)
+        if not self.debugger.execute_batch(2000):
             self.on_stop()
             return
 
         if self.debugger.running:
-            self.after(10, self.execution_loop)
+            self.after(1, self.execution_loop)
 
     def animation_loop(self):
         if not self.animating or not self.debugger.running:

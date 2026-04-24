@@ -15,3 +15,6 @@ class BasePlugin:
         
     def on_reset(self):
         pass
+
+    def pre_execute(self):
+        pass

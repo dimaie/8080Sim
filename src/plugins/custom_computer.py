@@ -3,6 +3,34 @@ import time
 import tkinter as tk
 import os
 from .base_plugin import BasePlugin
+from sim8080 import CPU8080
+
+PS2_MAP = {
+    'a': 0x1C, 'b': 0x32, 'c': 0x21, 'd': 0x23, 'e': 0x24, 'f': 0x2B,
+    'g': 0x34, 'h': 0x33, 'i': 0x43, 'j': 0x3B, 'k': 0x42, 'l': 0x4B,
+    'm': 0x3A, 'n': 0x31, 'o': 0x44, 'p': 0x4D, 'q': 0x15, 'r': 0x2D,
+    's': 0x1B, 't': 0x2C, 'u': 0x3C, 'v': 0x2A, 'w': 0x1D, 'x': 0x22,
+    'y': 0x35, 'z': 0x1A,
+    'A': 0x1C, 'B': 0x32, 'C': 0x21, 'D': 0x23, 'E': 0x24, 'F': 0x2B,
+    'G': 0x34, 'H': 0x33, 'I': 0x43, 'J': 0x3B, 'K': 0x42, 'L': 0x4B,
+    'M': 0x3A, 'N': 0x31, 'O': 0x44, 'P': 0x4D, 'Q': 0x15, 'R': 0x2D,
+    'S': 0x1B, 'T': 0x2C, 'U': 0x3C, 'V': 0x2A, 'W': 0x1D, 'X': 0x22,
+    'Y': 0x35, 'Z': 0x1A,
+    '0': 0x45, '1': 0x16, '2': 0x1E, '3': 0x26, '4': 0x25, '5': 0x2E,
+    '6': 0x36, '7': 0x3D, '8': 0x3E, '9': 0x46,
+    'exclam': 0x16, 'at': 0x1E, 'numbersign': 0x26, 'dollar': 0x25, 'percent': 0x2E,
+    'asciicircum': 0x36, 'ampersand': 0x3D, 'asterisk': 0x3E, 'parenleft': 0x46, 'parenright': 0x45,
+    'space': 0x29, 'Return': 0x5A, 'Escape': 0x76, 'BackSpace': 0x66, 'Tab': 0x0D,
+    'Shift_L': 0x12, 'Shift_R': 0x59, 'Control_L': 0x14, 'Control_R': [0xE0, 0x14],
+    'Alt_L': 0x11, 'Alt_R': [0xE0, 0x11],
+    'comma': 0x41, 'less': 0x41, 'period': 0x49, 'greater': 0x49,
+    'slash': 0x4A, 'question': 0x4A, 'semicolon': 0x4C, 'colon': 0x4C,
+    'apostrophe': 0x52, 'quotedbl': 0x52, 'bracketleft': 0x54, 'braceleft': 0x54,
+    'bracketright': 0x5B, 'braceright': 0x5B, 'backslash': 0x5D, 'bar': 0x5D,
+    'minus': 0x4E, 'underscore': 0x4E, 'equal': 0x55, 'plus': 0x55,
+    'grave': 0x0E, 'asciitilde': 0x0E,
+    'Up': [0xE0, 0x75], 'Down': [0xE0, 0x72], 'Left': [0xE0, 0x6B], 'Right': [0xE0, 0x74]
+}
 
 def rgb332_to_rgb(val):
     """Converts 8-bit RGB332 color to a 3-byte RGB sequence."""
@@ -15,6 +43,7 @@ class CustomComputerPlugin(BasePlugin):
         super().__init__(app)
         self.running = False
         self.thread = None
+        self.cpu_thread = None
         self.window = None
         self.canvas = None
         self.img_id = None
@@ -26,26 +55,49 @@ class CustomComputerPlugin(BasePlugin):
         self.reg_labels = {}
         self.color_swatches = {}
         
+        self.kb_queue = []
+        self.kb_data = 0
+        self.kb_ready = False
+        self.pressed_keys = set()
+        self.led_indicator = None
+        self.is_launched = False
+        self.autorun = False
+        
     def start(self):
         if self.running: return
         self.running = True
         self.thread = threading.Thread(target=self._scan_loop, daemon=True)
         self.thread.start()
+        self.cpu_thread = threading.Thread(target=self._cpu_loop, daemon=True)
+        self.cpu_thread.start()
         
     def stop(self):
         self.running = False
         if self.thread:
             self.thread.join()
+        if hasattr(self, 'cpu_thread') and self.cpu_thread:
+            self.cpu_thread.join()
+            
+    def _cpu_loop(self):
+        while self.running:
+            if self.window and self.window.winfo_exists() and self.autorun and not self.app.debugger.running:
+                if not CPU8080.status().halted:
+                    CPU8080.steps(2000)
+                time.sleep(0.001)
+            else:
+                time.sleep(0.05)
 
     def on_reset(self):
+        self.autorun = True
         # Inject default colors so the simulated screen isn't completely black on black
         mem = self.app.debugger.memory
         orig = self.app.debugger.original_memory
         
         plugin_dir = os.path.dirname(os.path.abspath(__file__))
         
-        # Load Program ROM
-        self._load_hex(os.path.join(plugin_dir, "program.hex"), 0x0000)
+        # Load System ROM (Core hardware ROM)
+        rom_path = os.path.join(plugin_dir, "program.hex")
+        self._load_hex(rom_path, 0x0000)
         
         # Load Font ROM
         font_path = os.path.join(plugin_dir, "fon_rom.hex")
@@ -55,8 +107,47 @@ class CustomComputerPlugin(BasePlugin):
         
         mem[0xC001] = orig[0xC001] = 0xFF # Text Ink = White
         mem[0xC002] = orig[0xC002] = 0x00 # Background = Black
+        mem[0xC003] = orig[0xC003] = 0x00 # Cursor X
+        mem[0xC004] = orig[0xC004] = 0x00 # Cursor Y
+        mem[0xC005] = orig[0xC005] = 0x02 # Cursor Style = Block
         mem[0xC006] = orig[0xC006] = 0xFF # Gfx Ink = White
         self.last_hash = 0
+
+        CPU8080.set('pc', 0x0000)
+        self.is_launched = False
+
+        self.kb_queue.clear()
+        self.kb_data = 0
+        self.kb_ready = False
+        self.pressed_keys.clear()
+        
+        orig_io_read = CPU8080._io_read
+        if getattr(orig_io_read, "__name__", "") != "custom_io_read":
+            def custom_io_read(port):
+                if port == 0x00:
+                    val = self.kb_data
+                    self.kb_ready = False # Auto-clear on read
+                    if self.kb_queue:
+                        self.kb_queue.pop(0)
+                    if self.kb_queue:
+                        self.kb_data = self.kb_queue[0]
+                        self.kb_ready = True
+                    return val
+                elif port == 0x01:
+                    return 1 if self.kb_ready else 0
+                return orig_io_read(port)
+                
+            CPU8080._io_read = custom_io_read
+
+    def pre_execute(self):
+        self.autorun = False
+        if not self.is_launched:
+            self.is_launched = True
+            start_addr = self.app.debugger.start_addr
+            if start_addr != 0x0000:
+                CPU8080.set('sp', 0x3FFF)
+                CPU8080._push(0x0000)
+                CPU8080.set('pc', start_addr)
 
     def _load_hex(self, filepath, current_addr):
         if not os.path.exists(filepath):
@@ -112,6 +203,9 @@ class CustomComputerPlugin(BasePlugin):
         self.window.resizable(False, False)
         self.window.attributes("-topmost", True)
         self.window.protocol("WM_DELETE_WINDOW", self.hide_window)
+        
+        self.window.bind("<KeyPress>", self.on_key_press) # Bind to window to catch keys
+        self.window.bind("<KeyRelease>", self.on_key_release)
 
         # Left Panel: 640x480 Display
         disp_frame = tk.Frame(self.window, width=640, height=480, bg="black")
@@ -120,10 +214,21 @@ class CustomComputerPlugin(BasePlugin):
         
         self.canvas = tk.Canvas(disp_frame, width=640, height=480, bg="black", highlightthickness=0)
         self.canvas.pack(fill=tk.BOTH, expand=True)
+        
+        # Bind to canvas as well, as it's the main interactive element
+        self.canvas.bind("<KeyPress>", self.on_key_press)
+        self.canvas.bind("<KeyRelease>", self.on_key_release)
 
         # Right Panel: Registers
         reg_frame = tk.Frame(self.window, width=240, height=480, padx=15, pady=15)
         reg_frame.pack(side=tk.LEFT, fill=tk.BOTH)
+        
+        # --- Keyboard LED Indicator ---
+        led_frame = tk.Frame(reg_frame)
+        led_frame.pack(fill=tk.X, pady=(0,15))
+        tk.Label(led_frame, text="KB Input:", font=("Arial", 10, "bold")).pack(side=tk.LEFT)
+        self.led_indicator = tk.Label(led_frame, width=2, bg="#400000", relief="solid", borderwidth=1)
+        self.led_indicator.pack(side=tk.LEFT, padx=5)
         
         tk.Label(reg_frame, text="MMIO Registers", font=("Arial", 12, "bold")).pack(anchor="w", pady=(0,10))
         
@@ -175,6 +280,52 @@ class CustomComputerPlugin(BasePlugin):
         
         self._lut_cache[key] = lut
         return lut
+
+    def _enqueue_scan_code(self, code_seq):
+        if isinstance(code_seq, list):
+            self.kb_queue.extend(code_seq)
+        else:
+            self.kb_queue.append(code_seq)
+            
+        if not self.kb_ready and self.kb_queue:
+            self.kb_data = self.kb_queue[0]
+            self.kb_ready = True
+
+    def on_key_press(self, event):
+        keysym = event.keysym
+        if keysym == 'F5':
+            self.app.on_reset()
+            return
+            
+        if keysym in self.pressed_keys:
+            return # Suppress OS typematic repeating
+            
+        code = PS2_MAP.get(keysym)
+        if code:
+            self.pressed_keys.add(keysym)
+            self._enqueue_scan_code(code)
+            
+            # Flash the LED indicator
+            if self.led_indicator and self.window and self.window.winfo_exists():
+                self.led_indicator.config(bg="#00ff00") # Bright Green
+                self.window.after(50, self.turn_off_led)
+
+    def on_key_release(self, event):
+        keysym = event.keysym
+        if keysym in self.pressed_keys:
+            self.pressed_keys.discard(keysym)
+            
+            code = PS2_MAP.get(keysym)
+            if code:
+                if isinstance(code, list):
+                    break_code = [code[0], 0xF0, code[1]]
+                    self._enqueue_scan_code(break_code)
+                else:
+                    self._enqueue_scan_code([0xF0, code])
+
+    def turn_off_led(self):
+        if self.led_indicator and self.window and self.window.winfo_exists():
+            self.led_indicator.config(bg="#400000") # Dark Red
 
     def _scan_loop(self):
         while self.running:

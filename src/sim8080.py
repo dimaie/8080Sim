@@ -19,6 +19,9 @@ class CPU8080:
     
     # Mapping integer codes 0-7 to register names. 6 is 'M' (Memory access via HL)
     _reg_names = ['b', 'c', 'd', 'e', 'h', 'l', 'm', 'a']
+    
+    # Precomputed Parity Table for 0-255
+    _parity_table = [1 if bin(i).count('1') % 2 == 0 else 0 for i in range(256)]
 
     @classmethod
     def init(cls, memoryTo, memoryAt, io_read=None, io_write=None):
@@ -301,7 +304,7 @@ class CPU8080:
         cls._state['f'] = (cls._state['f'] & ~(0b11000100)) | \
                           ((val >> 7) << 7) | \
                           ((1 if val == 0 else 0) << 6) | \
-                          ((1 if bin(val).count('1') % 2 == 0 else 0) << 2)
+                          (cls._parity_table[val] << 2)
                           
     @classmethod
     def _get_cy(cls): return cls._state['f'] & 1

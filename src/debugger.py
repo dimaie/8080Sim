@@ -86,20 +86,22 @@ class Debugger:
     def set_memory(self, addr, val):
         self.memory[addr] = val
 
-    def step(self):
+    def step(self, track_registers=True):
         if CPU8080.status().halted:
             return False
 
-        self.last_modified_mem.clear()
-        self.last_modified_regs.clear()
-        before_state = self.get_state().copy()
+        if track_registers:
+            self.last_modified_mem.clear()
+            self.last_modified_regs.clear()
+            before_state = self.get_state().copy()
 
         CPU8080.steps(1)
 
-        after_state = self.get_state()
-        for reg in ['a', 'b', 'c', 'd', 'e', 'h', 'l', 'pc', 'sp', 'f', 'halted']:
-            if before_state.get(reg) != after_state.get(reg):
-                self.last_modified_regs.add(reg)
+        if track_registers:
+            after_state = self.get_state()
+            for reg in ['a', 'b', 'c', 'd', 'e', 'h', 'l', 'pc', 'sp', 'f', 'halted']:
+                if before_state.get(reg) != after_state.get(reg):
+                    self.last_modified_regs.add(reg)
 
         return True
 
@@ -113,6 +115,9 @@ class Debugger:
     def execute_batch(self, batch_size=100):
         if not self.running:
             return False
+            
+        self.last_modified_mem.clear()
+        self.last_modified_regs.clear()
             
         for _ in range(batch_size):
             state = CPU8080.status()
@@ -128,7 +133,7 @@ class Debugger:
                     self.stop()
                     return False
             self.just_resumed = False
-            self.step()
+            self.step(track_registers=False)
             
         return self.running
 
