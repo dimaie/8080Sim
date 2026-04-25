@@ -30,7 +30,7 @@ class Debugger:
             return True
         return False
 
-    def compile(self, prog_text):
+    def compile(self, prog_text, preserve_memory=False):
         p = Parser()
         asm = Assembler()
         try:
@@ -41,9 +41,20 @@ class Debugger:
             self.line_to_addr = {line: addr for addr, line in self.addr_to_line.items()}
             self.label_to_addr = label_to_addr
             
+            if asm.assembled_chunks:
+                new_start_addr = asm.assembled_chunks[0]['addr']
+            else:
+                new_start_addr = 0
+                
+            if callable(preserve_memory):
+                preserve_memory = preserve_memory(new_start_addr)
+
             for chunk in self.last_compiled_chunks:
                 for i in range(chunk['length']):
-                    self.original_memory[chunk['addr'] + i] = 0
+                    addr = chunk['addr'] + i
+                    self.original_memory[addr] = 0
+                    if preserve_memory:
+                        self.memory[addr] = 0
                     
             for chunk in asm.assembled_chunks:
                 for i in range(chunk['length']):
@@ -51,12 +62,9 @@ class Debugger:
                     
             self.last_compiled_chunks = asm.assembled_chunks
             
-            if asm.assembled_chunks:
-                self.start_addr = asm.assembled_chunks[0]['addr']
-            else:
-                self.start_addr = 0
+            self.start_addr = new_start_addr
                 
-            self.reset()
+            self.reset(preserve_memory=preserve_memory)
             self.is_dirty = False
             
             # Validate existing breakpoints
@@ -64,21 +72,29 @@ class Debugger:
         finally:
             self.tokens = p.tokens
 
-    def reset(self):
-        self.memory = list(self.original_memory)
+    def reset(self, preserve_memory=False):
+        if not preserve_memory:
+            self.memory = list(self.original_memory)
+        else:
+            for chunk in self.last_compiled_chunks:
+                for i in range(chunk['length']):
+                    addr = chunk['addr'] + i
+                    self.memory[addr] = self.original_memory[addr]
+                    
         self.running = False
         self.just_resumed = False
         self.last_modified_regs.clear()
         self.last_modified_mem.clear()
         
-        def mem_write_tracker(addr, value):
-            if self.memory[addr] != value:
-                self.memory[addr] = value
-                self.last_modified_mem.add(addr)
-        def mem_read(addr): return self.memory[addr]
-            
-        CPU8080.init(mem_write_tracker, mem_read)
-        CPU8080.set('pc', self.start_addr)
+        if not preserve_memory:
+            def mem_write_tracker(addr, value):
+                if self.memory[addr] != value:
+                    self.memory[addr] = value
+                    self.last_modified_mem.add(addr)
+            def mem_read(addr): return self.memory[addr]
+                
+            CPU8080.init(mem_write_tracker, mem_read)
+            CPU8080.set('pc', self.start_addr)
 
     def set_register(self, reg, val):
         CPU8080.set(reg, val)
@@ -112,7 +128,7 @@ class Debugger:
     def stop(self):
         self.running = False
 
-    def execute_batch(self, batch_size=100):
+    def execute_batch(self, batch_size=100, stop_on_addr=None):
         if not self.running:
             return False
             
@@ -126,6 +142,10 @@ class Debugger:
                 return False
                 
             pc = state.pc
+            if stop_on_addr is not None and pc == stop_on_addr:
+                self.stop()
+                return False
+                
             if not self.just_resumed and pc in self.addr_to_line:
                 is_breakpoint = self.addr_to_line[pc] in self.breakpoints
                 is_modified = self.memory[pc] != self.original_memory[pc]

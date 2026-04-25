@@ -1,6 +1,7 @@
 import threading
 import time
 import tkinter as tk
+from tkinter import messagebox
 import os
 from .base_plugin import BasePlugin
 from sim8080 import CPU8080
@@ -38,6 +39,7 @@ def rgb332_to_rgb(val):
 
 class CustomComputerPlugin(BasePlugin):
     name = "Custom 8080 Computer (Display)"
+    MAGIC_RETURN = 0xDEAD
 
     def __init__(self, app):
         super().__init__(app)
@@ -62,9 +64,26 @@ class CustomComputerPlugin(BasePlugin):
         self.led_indicator = None
         self.is_launched = False
         self.autorun = False
+        self.saved_monitor_state = None
+        self.user_program_mode = True
         
+    def is_user_program_mode(self, start_addr=None):
+        return self.user_program_mode
+
     def start(self):
         if self.running: return
+        
+        # Explicitly ask the user for their intended debugging mode when the plugin is initialized
+        self.user_program_mode = messagebox.askyesno(
+            "Plugin Debug Mode",
+            "Are you debugging a User Program?\n\n"
+            "Yes (User Program): The Monitor ROM runs natively in the background. "
+            "Execution automatically handles context-switching via the 'G' command.\n\n"
+            "No (Monitor): The background thread is disabled. "
+            "You can debug the monitor's startup and execution explicitly from the UI.",
+            parent=self.app
+        )
+        
         self.running = True
         self.thread = threading.Thread(target=self._scan_loop, daemon=True)
         self.thread.start()
@@ -88,16 +107,16 @@ class CustomComputerPlugin(BasePlugin):
                 time.sleep(0.05)
 
     def on_reset(self):
-        self.autorun = True
-        # Inject default colors so the simulated screen isn't completely black on black
+        user_mode = self.is_user_program_mode()
+        self.autorun = user_mode
+        
         mem = self.app.debugger.memory
         orig = self.app.debugger.original_memory
-        
         plugin_dir = os.path.dirname(os.path.abspath(__file__))
         
-        # Load System ROM (Core hardware ROM)
-        rom_path = os.path.join(plugin_dir, "program.hex")
-        self._load_hex(rom_path, 0x0000)
+        if user_mode:
+            rom_path = os.path.join(plugin_dir, "program.hex")
+            self._load_hex(rom_path, 0x0000)
         
         # Load Font ROM
         font_path = os.path.join(plugin_dir, "fon_rom.hex")
@@ -113,7 +132,10 @@ class CustomComputerPlugin(BasePlugin):
         mem[0xC006] = orig[0xC006] = 0xFF # Gfx Ink = White
         self.last_hash = 0
 
-        CPU8080.set('pc', 0x0000)
+        if user_mode:
+            CPU8080.set('pc', 0x0000)
+        else:
+            CPU8080.set('pc', self.app.debugger.start_addr)
         self.is_launched = False
 
         self.kb_queue.clear()
@@ -140,14 +162,32 @@ class CustomComputerPlugin(BasePlugin):
             CPU8080._io_read = custom_io_read
 
     def pre_execute(self):
+        # Verification 1: Are we running in monitor mode or user program mode?
+        if not self.user_program_mode:
+            self.autorun = False
+            return
+            
+        # Verification 2: Are we starting the debugging session, or continuing it?
+        # If is_launched is True, we are continuing the session. We should not emulate 'G'.
+        if self.is_launched:
+            self.autorun = False
+            return
+            
+        # If we reach here, we are STARTING a new debugging session in User Program mode.
         self.autorun = False
-        if not self.is_launched:
-            self.is_launched = True
-            start_addr = self.app.debugger.start_addr
-            if start_addr != 0x0000:
-                CPU8080.set('sp', 0x3FFF)
-                CPU8080._push(0x0000)
-                CPU8080.set('pc', start_addr)
+        self.is_launched = True
+        
+        # Emulate the Monitor's 'G' command context switch
+        self.saved_monitor_state = CPU8080.status()
+        
+        CPU8080.set('sp', 0x3FFF)
+        CPU8080._push(self.MAGIC_RETURN) # Push magic trap address
+        CPU8080.set('pc', self.app.debugger.start_addr)
+
+    def restore_context(self):
+        if self.saved_monitor_state:
+            for reg in ['a', 'b', 'c', 'd', 'e', 'h', 'l', 'pc', 'sp', 'f', 'halted']:
+                CPU8080.set(reg, getattr(self.saved_monitor_state, reg))
 
     def _load_hex(self, filepath, current_addr):
         if not os.path.exists(filepath):
@@ -201,7 +241,7 @@ class CustomComputerPlugin(BasePlugin):
         self.window.title(self.name)
         self.window.geometry("880x480")
         self.window.resizable(False, False)
-        self.window.attributes("-topmost", True)
+        self.window.transient(self.app)
         self.window.protocol("WM_DELETE_WINDOW", self.hide_window)
         
         self.window.bind("<KeyPress>", self.on_key_press) # Bind to window to catch keys

@@ -31,6 +31,8 @@ class App(tk.Tk):
         self.stack_panel = None
         self.ref_guide_window = None
         self.plugins = []
+        self.available_plugins = {}
+        self.active_plugin = None
 
         self.debugger = Debugger()
 
@@ -168,6 +170,10 @@ class App(tk.Tk):
         src_dir = os.path.dirname(os.path.abspath(__file__))
         plugins_path = os.path.join(src_dir, "plugins")
         
+        self.available_plugins = {"None": None}
+        self.selected_plugin_name = tk.StringVar(value="None")
+        self.active_plugin = None
+        
         if not os.path.isdir(plugins_path):
             self.plugins_menu.add_command(label="Plugin system unavailable", state=tk.DISABLED)
             return
@@ -197,19 +203,43 @@ class App(tk.Tk):
                 module = importlib.import_module(f"{pkg_name}.{module_name}")
                 for attr_name, attr_val in inspect.getmembers(module, inspect.isclass):
                     if issubclass(attr_val, BasePlugin) and attr_val is not BasePlugin:
-                        plugin_instance = attr_val(self)
-                        self.plugins.append(plugin_instance)
-                        self.plugins_menu.add_command(label=plugin_instance.name, command=plugin_instance.show_window)
-                        plugin_instance.start()
-                        plugin_instance.on_reset()
+                        self.available_plugins[attr_val.name] = attr_val
                         plugin_count += 1
             except Exception as e:
                 print(f"Failed to load plugin {module_name}: {e}")
                 traceback.print_exc()
                 
-        if plugin_count == 0:
+        if len(self.available_plugins) == 1:
             self.plugins_menu.add_command(label="No plugins loaded", state=tk.DISABLED)
+            return
+            
+        plugin_select_menu = tk.Menu(self.plugins_menu, tearoff=0)
+        for name in self.available_plugins.keys():
+            plugin_select_menu.add_radiobutton(label=name, variable=self.selected_plugin_name, value=name, command=self.on_plugin_change)
+            
+        self.plugins_menu.add_cascade(label="Select Plugin", menu=plugin_select_menu)
+        self.plugins_menu.add_separator()
 
+    def on_plugin_change(self):
+        name = self.selected_plugin_name.get()
+        if self.active_plugin:
+            self.active_plugin.stop()
+            if hasattr(self.active_plugin, 'hide_window'):
+                self.active_plugin.hide_window()
+            self.active_plugin = None
+            self.plugins = []
+            
+        plugin_class = self.available_plugins.get(name)
+        if plugin_class:
+            self.active_plugin = plugin_class(self)
+            self.plugins = [self.active_plugin]
+            self.active_plugin.start()
+            if hasattr(self.active_plugin, 'show_window'):
+                self.active_plugin.show_window()
+            self.active_plugin.on_reset()
+            
+        self.update_ui()
+        
     def set_status_ready(self):
         self.status_var.set("Ready to run")
         self.status_label.config(fg="black")
@@ -256,13 +286,26 @@ class App(tk.Tk):
     def compile_code(self, quiet=False):
         try:
             prog = self.code_editor.get_text()
-            self.debugger.compile(prog)
+            
+            def should_preserve(start_addr):
+                if self.active_plugin and hasattr(self.active_plugin, 'is_user_program_mode'):
+                    return self.active_plugin.is_user_program_mode(start_addr)
+                return False
+                
+            self.debugger.compile(prog, preserve_memory=should_preserve)
             
             # Validate existing breakpoints
             self.code_editor.update_breakpoints()
             
-            for p in self.plugins:
-                p.on_reset()
+            preserve = should_preserve(self.debugger.start_addr)
+            if not preserve and self.active_plugin:
+                self.active_plugin.on_reset()
+            elif preserve and self.active_plugin:
+                # Re-compiling a User Program aborts any active session and resets the monitor context
+                if hasattr(self.active_plugin, 'restore_context'):
+                    self.active_plugin.restore_context()
+                self.active_plugin.autorun = True
+                self.active_plugin.is_launched = False
                 
             if not quiet:
                 self.set_status_success()
@@ -484,11 +527,20 @@ class App(tk.Tk):
                 self.update_ui()
             self.code_editor.highlight_syntax()
         else:
-            self.debugger.reset()
-            self.set_status_ready()
-            for p in self.plugins:
-                p.on_reset()
-            self.update_ui()
+            if self.active_plugin and getattr(self.active_plugin, 'is_user_program_mode', lambda: False)():
+                # Emulate RET context switch: Abort back to Monitor context
+                if hasattr(self.active_plugin, 'restore_context'):
+                    self.active_plugin.restore_context()
+                self.active_plugin.autorun = True
+                self.active_plugin.is_launched = False
+                self.set_status_ready()
+                self.update_ui()
+            else:
+                self.debugger.reset(preserve_memory=False)
+                self.set_status_ready()
+                if self.active_plugin:
+                    self.active_plugin.on_reset()
+                self.update_ui()
         self.update_menu_states()
         return "break"
 
@@ -537,6 +589,15 @@ class App(tk.Tk):
                 p.pre_execute()
                 
         self.debugger.step()
+        
+        if self.active_plugin and getattr(self.active_plugin, 'is_user_program_mode', lambda: False)():
+            stop_addr = getattr(self.active_plugin, 'MAGIC_RETURN', None)
+            if stop_addr is not None and self.debugger.get_state().pc == stop_addr:
+                if hasattr(self.active_plugin, 'restore_context'):
+                    self.active_plugin.restore_context()
+                self.active_plugin.autorun = True
+                self.active_plugin.is_launched = False
+                
         self.update_ui()
         return "break"
 
@@ -595,8 +656,15 @@ class App(tk.Tk):
         if not self.debugger.running:
             return
             
+        stop_addr = getattr(self.active_plugin, 'MAGIC_RETURN', None) if (self.active_plugin and getattr(self.active_plugin, 'is_user_program_mode', lambda: False)()) else None
+            
         # Throttle batch execution to simulate ~2 MHz clock speed (approx 2000 instructions per ms)
-        if not self.debugger.execute_batch(2000):
+        if not self.debugger.execute_batch(2000, stop_on_addr=stop_addr):
+            if stop_addr is not None and self.debugger.get_state().pc == stop_addr:
+                if hasattr(self.active_plugin, 'restore_context'):
+                    self.active_plugin.restore_context()
+                self.active_plugin.autorun = True
+                self.active_plugin.is_launched = False
             self.on_stop()
             return
 
@@ -607,7 +675,14 @@ class App(tk.Tk):
         if not self.animating or not self.debugger.running:
             return
             
-        if not self.debugger.execute_batch(1):
+        stop_addr = getattr(self.active_plugin, 'MAGIC_RETURN', None) if (self.active_plugin and getattr(self.active_plugin, 'is_user_program_mode', lambda: False)()) else None
+            
+        if not self.debugger.execute_batch(1, stop_on_addr=stop_addr):
+            if stop_addr is not None and self.debugger.get_state().pc == stop_addr:
+                if hasattr(self.active_plugin, 'restore_context'):
+                    self.active_plugin.restore_context()
+                self.active_plugin.autorun = True
+                self.active_plugin.is_launched = False
             self.on_stop()
             return
             
@@ -628,7 +703,11 @@ class App(tk.Tk):
             
         self.code_editor.clear_execution_highlight()
         highlight_addr = state.pc - 1 if state.halted else state.pc
-        
+
+        if self.active_plugin and getattr(self.active_plugin, 'is_user_program_mode', lambda: False)():
+            if not getattr(self.active_plugin, 'is_launched', True):
+                highlight_addr = self.debugger.start_addr
+                                            
         if highlight_addr in self.debugger.addr_to_line:
             line_num = self.debugger.addr_to_line[highlight_addr]
             is_modified = self.debugger.memory[highlight_addr] != self.debugger.original_memory[highlight_addr]
