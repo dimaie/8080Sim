@@ -3,6 +3,7 @@ Code Editor component handling the text area, syntax highlighting, and breakpoin
 """
 import tkinter as tk
 from tkinter import ttk
+from parser import Parser
 
 INSTRUCTIONS = {'adc', 'add', 'aci', 'adi', 'ana', 'ani', 'call', 'cc', 'cnc', 'cnz', 'cm', 'cp', 'cpe', 'cpo', 'cz', 'cma', 'cmc', 'cmp', 'cpi', 'dad', 'db', 'ds', 'dw', 'dcr', 'dcx', 'equ', 'hlt', 'in', 'inr', 'inx', 'jc', 'jm', 'jmp', 'jnc', 'jnz', 'jp', 'jpe', 'jpo', 'jz', 'lda', 'ldax', 'lhld', 'lxi', 'mov', 'mvi', 'nop', 'ora', 'ori', 'out', 'pchl', 'pop', 'push', 'rc', 'ret', 'rnc', 'rnz', 'rm', 'rp', 'rpe', 'rpo', 'rz', 'ral', 'rar', 'rlc', 'rrc', 'sbb', 'sbi', 'shld', 'sphl', 'sta', 'stax', 'stc', 'sub', 'sui', 'xchg', 'xra', 'xri', 'xthl', 'org'}
 REGISTERS = {'a', 'b', 'c', 'd', 'e', 'h', 'l', 'm', 'sp', 'psw', 'bc', 'de', 'hl'}
@@ -82,7 +83,13 @@ class CodeEditor(tk.Frame):
 
         line_counters = {}
         
-        for tok in self.app.debugger.tokens:
+        p = Parser()
+        try:
+            p.parse(self.get_text())
+        except Exception:
+            pass # Ignore incomplete statements while typing
+            
+        for tok in p.tokens:
             name = tok['name']
             val = tok['value']
             raw = tok['raw']
@@ -129,13 +136,9 @@ class CodeEditor(tk.Frame):
             if self.app.debugger.running:
                 self.app.on_stop()
             self.clear_execution_highlight()
-            
-            if self.app.compile_code(quiet=False):
-                self.app.update_ui()
-                self.app.set_status_ready()
+            self.app.set_status_fail("Code modified. Please compile (F9).")
                 
             self.highlight_syntax()
-            self.after_idle(self.update_gutter)
                 
             self.code_text.edit_modified(False)
             self.app.update_menu_states()

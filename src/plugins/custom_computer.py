@@ -50,6 +50,7 @@ class CustomComputerPlugin(BasePlugin):
         self.canvas = None
         self.img_id = None
         self.photo_img = None
+        self.orig_io_read = None
         
         self.last_hash = 0
         self.frame_cnt = 0
@@ -100,6 +101,21 @@ class CustomComputerPlugin(BasePlugin):
         if hasattr(self, 'cpu_thread') and self.cpu_thread:
             self.cpu_thread.join()
             
+        if self.orig_io_read is not None:
+            CPU8080._io_read = self.orig_io_read
+            self.orig_io_read = None
+            
+        mem = self.app.debugger.memory
+        orig = self.app.debugger.original_memory
+        
+        mem[:] = [0] * 65536
+        orig[:] = [0] * 65536
+        
+        self.app.debugger.is_dirty = True
+        self.app.set_status_fail("Plugin detached. Memory cleared. Please recompile the user program.")
+                    
+        self.hide_window()
+
     def _cpu_loop(self):
         while self.running:
             if self.window and self.window.winfo_exists() and self.autorun and not self.app.debugger.running:
@@ -151,6 +167,7 @@ class CustomComputerPlugin(BasePlugin):
         
         orig_io_read = CPU8080._io_read
         if getattr(orig_io_read, "__name__", "") != "custom_io_read":
+            self.orig_io_read = orig_io_read
             def custom_io_read(port):
                 if port == 0x00:
                     val = self.kb_data
@@ -173,7 +190,7 @@ class CustomComputerPlugin(BasePlugin):
                     return (self.mouse_y >> 8) & 0xFF
                 elif port == 0x08:
                     return self.mouse_btn
-                return orig_io_read(port)
+                return self.orig_io_read(port) if self.orig_io_read else 0
                 
             CPU8080._io_read = custom_io_read
 

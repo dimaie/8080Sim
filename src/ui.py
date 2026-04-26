@@ -57,6 +57,7 @@ class App(tk.Tk):
         menubar.add_cascade(label="Files", menu=self.file_menu)
         
         self.debug_menu = tk.Menu(menubar, tearoff=0)
+        self.debug_menu.add_command(label="Compile", accelerator="F9", command=self.on_compile)
         self.debug_menu.add_command(label="Run", accelerator="F5", command=self.on_run)
         self.debug_menu.add_command(label="Step", accelerator="F10", command=self.on_step)
         self.debug_menu.add_command(label="Stop", accelerator="Shift+F5", command=self.on_stop)
@@ -77,6 +78,7 @@ class App(tk.Tk):
         self.bind("<Control-g>", self.on_generate)
         self.bind("<Control-q>", self.on_exit)
         
+        self.bind("<F9>", self.on_compile)
         self.bind("<F5>", self.on_run)
         self.bind("<F10>", self.on_step)
         self.bind("<Shift-F5>", self.on_stop)
@@ -224,11 +226,13 @@ class App(tk.Tk):
         name = self.selected_plugin_name.get()
         if self.active_plugin:
             self.active_plugin.stop()
-            if hasattr(self.active_plugin, 'hide_window'):
-                self.active_plugin.hide_window()
             self.active_plugin = None
             self.plugins = []
             
+        self.debugger.reset(preserve_memory=False)
+        if not self.debugger.is_dirty:
+            self.set_status_ready()
+
         plugin_class = self.available_plugins.get(name)
         if plugin_class:
             self.active_plugin = plugin_class(self)
@@ -271,12 +275,14 @@ class App(tk.Tk):
         self.file_menu.entryconfig("Send..", state=state_val)
 
         if self.debugger.running:
+            self.debug_menu.entryconfig("Compile", state=tk.DISABLED)
             self.debug_menu.entryconfig("Run", state=tk.DISABLED)
             self.debug_menu.entryconfig("Animate", state=tk.DISABLED)
             self.debug_menu.entryconfig("Step", state=tk.DISABLED)
             self.debug_menu.entryconfig("Reset", state=tk.DISABLED)
             self.debug_menu.entryconfig("Stop", state=tk.NORMAL)
         else:
+            self.debug_menu.entryconfig("Compile", state=state_val)
             self.debug_menu.entryconfig("Run", state=state_val)
             self.debug_menu.entryconfig("Animate", state=state_val)
             self.debug_menu.entryconfig("Step", state=state_val)
@@ -308,13 +314,25 @@ class App(tk.Tk):
                 self.active_plugin.is_launched = False
                 
             if not quiet:
+                total_bytes = sum(chunk['length'] for chunk in self.debugger.last_compiled_chunks)
                 self.set_status_success()
+                self.status_var.set(f"Compiled successfully ({total_bytes} bytes). Ready to run.")
             return True
         except Exception as e:
             traceback.print_exc()
             if not quiet:
                 self.set_status_fail(str(e))
             return False
+
+    def on_compile(self, event=None):
+        if not self.code_editor.get_text().strip():
+            return "break"
+            
+        if self.compile_code(quiet=False):
+            self.update_ui()
+            self.code_editor.highlight_syntax()
+            self.after_idle(self.code_editor.update_gutter)
+        return "break"
 
     def on_open(self, event=None):
         file_path = filedialog.askopenfilename(defaultextension=".asm", filetypes=[("Assembly Files", "*.asm"), ("All Files", "*.*")])
