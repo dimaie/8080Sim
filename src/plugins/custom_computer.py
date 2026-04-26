@@ -60,6 +60,9 @@ class CustomComputerPlugin(BasePlugin):
         self.kb_queue = []
         self.kb_data = 0
         self.kb_ready = False
+        self.mouse_x = 0
+        self.mouse_y = 0
+        self.mouse_btn = 0
         self.pressed_keys = set()
         self.led_indicator = None
         self.is_launched = False
@@ -142,6 +145,9 @@ class CustomComputerPlugin(BasePlugin):
         self.kb_data = 0
         self.kb_ready = False
         self.pressed_keys.clear()
+        self.mouse_x = 0
+        self.mouse_y = 0
+        self.mouse_btn = 0
         
         orig_io_read = CPU8080._io_read
         if getattr(orig_io_read, "__name__", "") != "custom_io_read":
@@ -157,6 +163,16 @@ class CustomComputerPlugin(BasePlugin):
                     return val
                 elif port == 0x01:
                     return 1 if self.kb_ready else 0
+                elif port == 0x04:
+                    return self.mouse_x & 0xFF
+                elif port == 0x05:
+                    return (self.mouse_x >> 8) & 0xFF
+                elif port == 0x06:
+                    return self.mouse_y & 0xFF
+                elif port == 0x07:
+                    return (self.mouse_y >> 8) & 0xFF
+                elif port == 0x08:
+                    return self.mouse_btn
                 return orig_io_read(port)
                 
             CPU8080._io_read = custom_io_read
@@ -258,6 +274,13 @@ class CustomComputerPlugin(BasePlugin):
         # Bind to canvas as well, as it's the main interactive element
         self.canvas.bind("<KeyPress>", self.on_key_press)
         self.canvas.bind("<KeyRelease>", self.on_key_release)
+        self.canvas.bind("<Motion>", self.on_mouse_move)
+        self.canvas.bind("<B1-Motion>", self.on_mouse_move)
+        self.canvas.bind("<B3-Motion>", self.on_mouse_move)
+        self.canvas.bind("<ButtonPress-1>", lambda e: self.on_mouse_btn(1, True))
+        self.canvas.bind("<ButtonRelease-1>", lambda e: self.on_mouse_btn(1, False))
+        self.canvas.bind("<ButtonPress-3>", lambda e: self.on_mouse_btn(2, True))
+        self.canvas.bind("<ButtonRelease-3>", lambda e: self.on_mouse_btn(2, False))
 
         # Right Panel: Registers
         reg_frame = tk.Frame(self.window, width=240, height=480, padx=15, pady=15)
@@ -367,6 +390,16 @@ class CustomComputerPlugin(BasePlugin):
         if self.led_indicator and self.window and self.window.winfo_exists():
             self.led_indicator.config(bg="#400000") # Dark Red
 
+    def on_mouse_move(self, event):
+        self.mouse_x = max(0, min(319, event.x // 2))
+        self.mouse_y = max(0, min(239, event.y // 2))
+
+    def on_mouse_btn(self, btn_mask, pressed):
+        if pressed:
+            self.mouse_btn |= btn_mask
+        else:
+            self.mouse_btn &= ~btn_mask
+
     def _scan_loop(self):
         while self.running:
             if self.window and self.window.winfo_exists():
@@ -397,8 +430,8 @@ class CustomComputerPlugin(BasePlugin):
             font_line = y % 8
             
             # Replicating Verilog's cursor shape/blink XOR logic
-            cur_shape_active = (cur_style == 2) or (cur_style == 1 and font_line >= 4)
-            show_cursor_line = cur_shape_active and blink_active and (cur_style != 0) and (y // 8 == cur_y)
+            cur_shape_active = (cur_style == 2) or (cur_style == 3) or (cur_style == 1 and font_line >= 4)
+            show_cursor_line = cur_shape_active and (blink_active or cur_style == 3) and (cur_style != 0) and (y // 8 == cur_y)
             
             line_bytes = bytearray()
             for x in range(40):
