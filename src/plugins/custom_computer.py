@@ -272,7 +272,7 @@ class CustomComputerPlugin(BasePlugin):
 
         self.window = tk.Toplevel(self.app)
         self.window.title(self.name)
-        self.window.geometry("880x480")
+        self.window.geometry("752x480")
         self.window.resizable(False, False)
         self.window.transient(self.app)
         self.window.protocol("WM_DELETE_WINDOW", self.hide_window)
@@ -280,12 +280,12 @@ class CustomComputerPlugin(BasePlugin):
         self.window.bind("<KeyPress>", self.on_key_press) # Bind to window to catch keys
         self.window.bind("<KeyRelease>", self.on_key_release)
 
-        # Left Panel: 640x480 Display
-        disp_frame = tk.Frame(self.window, width=640, height=480, bg="black")
+        # Left Panel: 512x480 Display
+        disp_frame = tk.Frame(self.window, width=512, height=480, bg="black")
         disp_frame.pack(side=tk.LEFT)
         disp_frame.pack_propagate(False)
         
-        self.canvas = tk.Canvas(disp_frame, width=640, height=480, bg="black", highlightthickness=0)
+        self.canvas = tk.Canvas(disp_frame, width=512, height=480, bg="black", highlightthickness=0)
         self.canvas.pack(fill=tk.BOTH, expand=True)
         
         # Bind to canvas as well, as it's the main interactive element
@@ -408,7 +408,7 @@ class CustomComputerPlugin(BasePlugin):
             self.led_indicator.config(bg="#400000") # Dark Red
 
     def on_mouse_move(self, event):
-        self.mouse_x = max(0, min(319, event.x // 2))
+        self.mouse_x = max(0, min(255, event.x // 2))
         self.mouse_y = max(0, min(239, event.y // 2))
 
     def on_mouse_btn(self, btn_mask, pressed):
@@ -429,7 +429,7 @@ class CustomComputerPlugin(BasePlugin):
         blink_active = (self.frame_cnt // 10) % 2 != 0
         
         # Using native python hash on memory slices as a lightning-fast dirtiness check
-        h = hash(bytes(mem[0x4000:0x6580])) ^ hash(bytes(mem[0xA000:0xA960])) ^ \
+        h = hash(bytes(mem[0x4000:0x5E00])) ^ hash(bytes(mem[0xA000:0xA780])) ^ \
             hash(bytes(mem[0xB000:0xB800])) ^ hash(bytes(mem[0xC001:0xC007])) ^ hash(blink_active)
             
         if h == self.last_hash: return
@@ -438,12 +438,12 @@ class CustomComputerPlugin(BasePlugin):
         t_ink, bg, cur_x, cur_y, cur_style, g_ink = (mem[addr] for addr in range(0xC001, 0xC007))
         lut = self._get_lut(t_ink, g_ink, bg)
         
-        # Start PPM P6 image builder (640x480 resolution)
-        ppm_data = bytearray(b"P6\n640 480\n255\n")
+        # Start PPM P6 image builder (512x480 resolution)
+        ppm_data = bytearray(b"P6\n512 480\n255\n")
         
         for y in range(240):
-            txt_off = 0xA000 + (y // 8) * 80
-            gfx_off = 0x4000 + y * 40
+            txt_off = 0xA000 + (y // 8) * 64
+            gfx_off = 0x4000 + y * 32
             font_line = y % 8
             
             # Replicating Verilog's cursor shape/blink XOR logic
@@ -451,7 +451,7 @@ class CustomComputerPlugin(BasePlugin):
             show_cursor_line = cur_shape_active and (blink_active or cur_style == 3) and (cur_style != 0) and (y // 8 == cur_y)
             
             line_bytes = bytearray()
-            for x in range(40):
+            for x in range(32):
                 g_byte = mem[gfx_off + x]
                 char1 = mem[txt_off + x*2]
                 char2 = mem[txt_off + x*2 + 1]
