@@ -1,78 +1,83 @@
-@3000       // Start at address 0x3000
-31 FF 3F    // LXI SP, STACK_TOP	; Initialize stack pointer
-CD 8A 34    // CALL main
-76          // HLT
-2A 7B 30    // LHLD __VAR_clear_gfx_ram_i	; Shadow stack push
+@2100       // Start at address 0x2100
+31 FF 3F    // LXI SP, 3FFFH    ; Initialize Stack Pointer to the very top of Program RAM
+CD BF 2E    // CALL main        ; Start the C program
+76          // HLT              ; Halt the processor when main() returns
+2A 24 21    // LHLD __VAR_clear_screen_layer	; Shadow stack push
 E5          // PUSH H
-2A 7D 30    // LHLD __VAR_clear_gfx_ram_vram	; Shadow stack push
-E5          // PUSH H
-21 00 40    // LXI H, 16384
-22 7D 30    // SHLD __VAR_clear_gfx_ram_vram
-21 00 00    // LXI H, 0
-22 7B 30    // SHLD __VAR_clear_gfx_ram_i
-2A 7B 30    // LHLD __VAR_clear_gfx_ram_i
-E5          // PUSH H
-21 C0 12    // LXI H, 4800
-D1          // POP D
-7B          // MOV A, E
-95          // SUB L
-7A          // MOV A, D
-9C          // SBB H
-FA 30 30    // JM L3
-21 00 00    // LXI H, 0
-C3 33 30    // JMP L4
-21 01 00    // LXI H, 1
-7C          // MOV A, H
-B5          // ORA L
-CA 5F 30    // JZ L1
-21 00 00    // LXI H, 0
-E5          // PUSH H
-2A 7D 30    // LHLD __VAR_clear_gfx_ram_vram
-D1          // POP D
-73          // MOV M, E
+21 04 00    // LXI H, 4
+39          // DAD SP
+5E          // MOV E, M
 23          // INX H
-72          // MOV M, D
+56          // MOV D, M
 EB          // XCHG
-2A 7D 30    // LHLD __VAR_clear_gfx_ram_vram
-E5          // PUSH H
-21 02 00    // LXI H, 2
-D1          // POP D
-19          // DAD D
-22 7D 30    // SHLD __VAR_clear_gfx_ram_vram
-2A 7B 30    // LHLD __VAR_clear_gfx_ram_i
-E5          // PUSH H
-21 01 00    // LXI H, 1
-D1          // POP D
-19          // DAD D
-22 7B 30    // SHLD __VAR_clear_gfx_ram_i
-C3 1B 30    // JMP L0
-21 00 00    // LXI H, 0
-EB          // XCHG	; Save return value
-E1          // POP H		; Shadow stack pop
-22 7D 30    // SHLD __VAR_clear_gfx_ram_vram
-E1          // POP H		; Shadow stack pop
-22 7B 30    // SHLD __VAR_clear_gfx_ram_i
-EB          // XCHG	; Restore return value
-C9          // RET
+22 24 21    // SHLD __VAR_clear_screen_layer
+E1          // POP H       ; Discard 'layer' shadow backup
+C3 16 00    // JMP 0016H
 21 00 00    // LXI H, 0
 EB          // XCHG
 E1          // POP H		; Shadow stack pop
-22 7D 30    // SHLD __VAR_clear_gfx_ram_vram
-E1          // POP H		; Shadow stack pop
-22 7B 30    // SHLD __VAR_clear_gfx_ram_i
+22 24 21    // SHLD __VAR_clear_screen_layer
 EB          // XCHG
 C9          // RET
 
-@307F       // Start at address 0x307F
-2A 75 31    // LHLD __VAR_put_pixel_mask	; Shadow stack push
+@2126       // Start at address 0x2126
+2A 6B 21    // LHLD __VAR_put_char_xy_y	; Shadow stack push
 E5          // PUSH H
-2A 77 31    // LHLD __VAR_put_pixel_rem	; Shadow stack push
+2A 6D 21    // LHLD __VAR_put_char_xy_x	; Shadow stack push
 E5          // PUSH H
-2A 79 31    // LHLD __VAR_put_pixel_vram_addr	; Shadow stack push
+2A 6F 21    // LHLD __VAR_put_char_xy_c	; Shadow stack push
 E5          // PUSH H
-2A 7B 31    // LHLD __VAR_put_pixel_y	; Shadow stack push
+21 08 00    // LXI H, 8
+39          // DAD SP
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+22 6F 21    // SHLD __VAR_put_char_xy_c
+21 0A 00    // LXI H, 10
+39          // DAD SP
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+22 6D 21    // SHLD __VAR_put_char_xy_x
+21 0C 00    // LXI H, 12
+39          // DAD SP
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+22 6B 21    // SHLD __VAR_put_char_xy_y
+E1          // POP H       ; Discard 'y' shadow backup
+E1          // POP H       ; Discard 'x' shadow backup
+E1          // POP H       ; Discard 'c' shadow backup
+C3 19 00    // JMP 0019H
+21 00 00    // LXI H, 0
+EB          // XCHG
+E1          // POP H		; Shadow stack pop
+22 6F 21    // SHLD __VAR_put_char_xy_c
+E1          // POP H		; Shadow stack pop
+22 6D 21    // SHLD __VAR_put_char_xy_x
+E1          // POP H		; Shadow stack pop
+22 6B 21    // SHLD __VAR_put_char_xy_y
+EB          // XCHG
+C9          // RET
+
+@2171       // Start at address 0x2171
+C3 22 00    // JMP 0022H
+21 00 00    // LXI H, 0
+EB          // XCHG
+EB          // XCHG
+C9          // RET
+2A E7 21    // LHLD __VAR_draw_line_color	; Shadow stack push
 E5          // PUSH H
-2A 7D 31    // LHLD __VAR_put_pixel_x	; Shadow stack push
+2A E9 21    // LHLD __VAR_draw_line_y1	; Shadow stack push
+E5          // PUSH H
+2A EB 21    // LHLD __VAR_draw_line_x1	; Shadow stack push
+E5          // PUSH H
+2A ED 21    // LHLD __VAR_draw_line_y0	; Shadow stack push
+E5          // PUSH H
+2A EF 21    // LHLD __VAR_draw_line_x0	; Shadow stack push
 E5          // PUSH H
 21 0C 00    // LXI H, 12
 39          // DAD SP
@@ -80,68 +85,93 @@ E5          // PUSH H
 23          // INX H
 56          // MOV D, M
 EB          // XCHG
-22 7D 31    // SHLD __VAR_put_pixel_x
+22 EF 21    // SHLD __VAR_draw_line_x0
 21 0E 00    // LXI H, 14
 39          // DAD SP
 5E          // MOV E, M
 23          // INX H
 56          // MOV D, M
 EB          // XCHG
-22 7B 31    // SHLD __VAR_put_pixel_y
-21 00 40    // LXI H, 16384
-E5          // PUSH H
-2A 7B 31    // LHLD __VAR_put_pixel_y
-E5          // PUSH H
-21 05 00    // LXI H, 5
-D1          // POP D
+22 ED 21    // SHLD __VAR_draw_line_y0
+21 10 00    // LXI H, 16
+39          // DAD SP
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
 EB          // XCHG
-7B          // MOV A, E
-B7          // ORA A
-CA C0 30    // JZ L6
-29          // DAD H
-1D          // DCR E
-C2 BB 30    // JNZ L5
-D1          // POP D
-19          // DAD D
-E5          // PUSH H
-2A 7B 31    // LHLD __VAR_put_pixel_y
-E5          // PUSH H
-21 03 00    // LXI H, 3
-D1          // POP D
+22 EB 21    // SHLD __VAR_draw_line_x1
+21 12 00    // LXI H, 18
+39          // DAD SP
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
 EB          // XCHG
-7B          // MOV A, E
-B7          // ORA A
-CA D6 30    // JZ L8
-29          // DAD H
-1D          // DCR E
-C2 D1 30    // JNZ L7
-D1          // POP D
-19          // DAD D
-E5          // PUSH H
-2A 7D 31    // LHLD __VAR_put_pixel_x
-E5          // PUSH H
-21 03 00    // LXI H, 3
-D1          // POP D
+22 E9 21    // SHLD __VAR_draw_line_y1
+21 14 00    // LXI H, 20
+39          // DAD SP
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
 EB          // XCHG
-7B          // MOV A, E
-B7          // ORA A
-CA F3 30    // JZ L10
-7C          // MOV A, H
-07          // RLC
-7C          // MOV A, H
-1F          // RAR
-67          // MOV H, A
-7D          // MOV A, L
-1F          // RAR
-6F          // MOV L, A
-1D          // DCR E
-C2 E7 30    // JNZ L9
-D1          // POP D
-19          // DAD D
-22 79 31    // SHLD __VAR_put_pixel_vram_addr
-2A 7D 31    // LHLD __VAR_put_pixel_x
+22 E7 21    // SHLD __VAR_draw_line_color
+E1          // POP H       ; Discard 'color' shadow backup
+E1          // POP H       ; Discard 'y1' shadow backup
+E1          // POP H       ; Discard 'x1' shadow backup
+E1          // POP H       ; Discard 'y0' shadow backup
+E1          // POP H       ; Discard 'x0' shadow backup
+C3 25 00    // JMP 0025H
+21 00 00    // LXI H, 0
+EB          // XCHG
+E1          // POP H		; Shadow stack pop
+22 EF 21    // SHLD __VAR_draw_line_x0
+E1          // POP H		; Shadow stack pop
+22 ED 21    // SHLD __VAR_draw_line_y0
+E1          // POP H		; Shadow stack pop
+22 EB 21    // SHLD __VAR_draw_line_x1
+E1          // POP H		; Shadow stack pop
+22 E9 21    // SHLD __VAR_draw_line_y1
+E1          // POP H		; Shadow stack pop
+22 E7 21    // SHLD __VAR_draw_line_color
+EB          // XCHG
+C9          // RET
+
+@21F1       // Start at address 0x21F1
+2A AF 22    // LHLD __VAR_puts_at_c	; Shadow stack push
 E5          // PUSH H
-21 07 00    // LXI H, 7
+2A B1 22    // LHLD __VAR_puts_at_str	; Shadow stack push
+E5          // PUSH H
+2A B3 22    // LHLD __VAR_puts_at_y	; Shadow stack push
+E5          // PUSH H
+2A B5 22    // LHLD __VAR_puts_at_x	; Shadow stack push
+E5          // PUSH H
+21 0A 00    // LXI H, 10
+39          // DAD SP
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+22 B5 22    // SHLD __VAR_puts_at_x
+21 0C 00    // LXI H, 12
+39          // DAD SP
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+22 B3 22    // SHLD __VAR_puts_at_y
+21 0E 00    // LXI H, 14
+39          // DAD SP
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+22 B1 22    // SHLD __VAR_puts_at_str
+2A B1 22    // LHLD __VAR_puts_at_str
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+E5          // PUSH H
+21 FF 00    // LXI H, 255
 D1          // POP D
 7B          // MOV A, E
 A5          // ANA L
@@ -149,42 +179,941 @@ A5          // ANA L
 7A          // MOV A, D
 A4          // ANA H
 67          // MOV H, A
-22 77 31    // SHLD __VAR_put_pixel_rem
-21 80 00    // LXI H, 128
+22 AF 22    // SHLD __VAR_puts_at_c
+2A AF 22    // LHLD __VAR_puts_at_c
+7C          // MOV A, H
+B5          // ORA L
+CA 83 22    // JZ L1
+2A B3 22    // LHLD __VAR_puts_at_y
 E5          // PUSH H
-2A 77 31    // LHLD __VAR_put_pixel_rem
+2A B5 22    // LHLD __VAR_puts_at_x
+E5          // PUSH H
+2A AF 22    // LHLD __VAR_puts_at_c
+E5          // PUSH H
+CD 26 21    // CALL put_char_xy
+EB          // XCHG	; Save Return Value
+E1          // POP H	; Discard argument
+E1          // POP H	; Discard argument
+E1          // POP H	; Discard argument
+EB          // XCHG	; Restore Return Value
+2A B5 22    // LHLD __VAR_puts_at_x
+E5          // PUSH H
+21 01 00    // LXI H, 1
 D1          // POP D
-EB          // XCHG
-7B          // MOV A, E
-B7          // ORA A
-CA 23 31    // JZ L12
-7C          // MOV A, H
-07          // RLC
-7C          // MOV A, H
-1F          // RAR
-67          // MOV H, A
-7D          // MOV A, L
-1F          // RAR
-6F          // MOV L, A
-1D          // DCR E
-C2 17 31    // JNZ L11
-22 75 31    // SHLD __VAR_put_pixel_mask
-2A 79 31    // LHLD __VAR_put_pixel_vram_addr
+19          // DAD D
+22 B5 22    // SHLD __VAR_puts_at_x
+2A B1 22    // LHLD __VAR_puts_at_str
+E5          // PUSH H
+21 01 00    // LXI H, 1
+D1          // POP D
+19          // DAD D
+22 B1 22    // SHLD __VAR_puts_at_str
+2A B1 22    // LHLD __VAR_puts_at_str
 5E          // MOV E, M
 23          // INX H
 56          // MOV D, M
 EB          // XCHG
 E5          // PUSH H
-2A 75 31    // LHLD __VAR_put_pixel_mask
+21 FF 00    // LXI H, 255
 D1          // POP D
 7B          // MOV A, E
-B5          // ORA L
+A5          // ANA L
 6F          // MOV L, A
 7A          // MOV A, D
-B4          // ORA H
+A4          // ANA H
+67          // MOV H, A
+22 AF 22    // SHLD __VAR_puts_at_c
+C3 37 22    // JMP L0
+21 00 00    // LXI H, 0
+EB          // XCHG	; Save return value
+E1          // POP H		; Shadow stack pop
+22 B5 22    // SHLD __VAR_puts_at_x
+E1          // POP H		; Shadow stack pop
+22 B3 22    // SHLD __VAR_puts_at_y
+E1          // POP H		; Shadow stack pop
+22 B1 22    // SHLD __VAR_puts_at_str
+E1          // POP H		; Shadow stack pop
+22 AF 22    // SHLD __VAR_puts_at_c
+EB          // XCHG	; Restore return value
+C9          // RET
+21 00 00    // LXI H, 0
+EB          // XCHG
+E1          // POP H		; Shadow stack pop
+22 B5 22    // SHLD __VAR_puts_at_x
+E1          // POP H		; Shadow stack pop
+22 B3 22    // SHLD __VAR_puts_at_y
+E1          // POP H		; Shadow stack pop
+22 B1 22    // SHLD __VAR_puts_at_str
+E1          // POP H		; Shadow stack pop
+22 AF 22    // SHLD __VAR_puts_at_c
+EB          // XCHG
+C9          // RET
+
+@22B7       // Start at address 0x22B7
+2A C1 23    // LHLD __VAR_divide_res	; Shadow stack push
+E5          // PUSH H
+2A C3 23    // LHLD __VAR_divide_sign	; Shadow stack push
+E5          // PUSH H
+2A C5 23    // LHLD __VAR_divide_b	; Shadow stack push
+E5          // PUSH H
+2A C7 23    // LHLD __VAR_divide_a	; Shadow stack push
+E5          // PUSH H
+21 0A 00    // LXI H, 10
+39          // DAD SP
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+22 C7 23    // SHLD __VAR_divide_a
+21 0C 00    // LXI H, 12
+39          // DAD SP
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+22 C5 23    // SHLD __VAR_divide_b
+21 00 00    // LXI H, 0
+22 C3 23    // SHLD __VAR_divide_sign
+2A C7 23    // LHLD __VAR_divide_a
+E5          // PUSH H
+21 00 00    // LXI H, 0
+D1          // POP D
+7B          // MOV A, E
+95          // SUB L
+7A          // MOV A, D
+9C          // SBB H
+FA F8 22    // JM L4
+21 00 00    // LXI H, 0
+C3 FB 22    // JMP L5
+21 01 00    // LXI H, 1
+7C          // MOV A, H
+B5          // ORA L
+CA 21 23    // JZ L2
+2A C7 23    // LHLD __VAR_divide_a
+7C          // MOV A, H
+2F          // CMA
+67          // MOV H, A
+7D          // MOV A, L
+2F          // CMA
+6F          // MOV L, A
+23          // INX H
+22 C7 23    // SHLD __VAR_divide_a
+2A C3 23    // LHLD __VAR_divide_sign
+E5          // PUSH H
+21 01 00    // LXI H, 1
+D1          // POP D
+7B          // MOV A, E
+AD          // XRA L
+6F          // MOV L, A
+7A          // MOV A, D
+AC          // XRA H
+67          // MOV H, A
+22 C3 23    // SHLD __VAR_divide_sign
+C3 21 23    // JMP L3
+2A C5 23    // LHLD __VAR_divide_b
+E5          // PUSH H
+21 00 00    // LXI H, 0
+D1          // POP D
+7B          // MOV A, E
+95          // SUB L
+7A          // MOV A, D
+9C          // SBB H
+FA 36 23    // JM L8
+21 00 00    // LXI H, 0
+C3 39 23    // JMP L9
+21 01 00    // LXI H, 1
+7C          // MOV A, H
+B5          // ORA L
+CA 5F 23    // JZ L6
+2A C5 23    // LHLD __VAR_divide_b
+7C          // MOV A, H
+2F          // CMA
+67          // MOV H, A
+7D          // MOV A, L
+2F          // CMA
+6F          // MOV L, A
+23          // INX H
+22 C5 23    // SHLD __VAR_divide_b
+2A C3 23    // LHLD __VAR_divide_sign
+E5          // PUSH H
+21 01 00    // LXI H, 1
+D1          // POP D
+7B          // MOV A, E
+AD          // XRA L
+6F          // MOV L, A
+7A          // MOV A, D
+AC          // XRA H
+67          // MOV H, A
+22 C3 23    // SHLD __VAR_divide_sign
+C3 5F 23    // JMP L7
+2A C7 23    // LHLD __VAR_divide_a
+E5          // PUSH H
+2A C5 23    // LHLD __VAR_divide_b
+D1          // POP D
+CD 3D 34    // CALL __div
+22 C1 23    // SHLD __VAR_divide_res
+2A C3 23    // LHLD __VAR_divide_sign
+7C          // MOV A, H
+B5          // ORA L
+CA 95 23    // JZ L10
+2A C1 23    // LHLD __VAR_divide_res
+7C          // MOV A, H
+2F          // CMA
+67          // MOV H, A
+7D          // MOV A, L
+2F          // CMA
+6F          // MOV L, A
+23          // INX H
+EB          // XCHG	; Save return value
+E1          // POP H		; Shadow stack pop
+22 C7 23    // SHLD __VAR_divide_a
+E1          // POP H		; Shadow stack pop
+22 C5 23    // SHLD __VAR_divide_b
+E1          // POP H		; Shadow stack pop
+22 C3 23    // SHLD __VAR_divide_sign
+E1          // POP H		; Shadow stack pop
+22 C1 23    // SHLD __VAR_divide_res
+EB          // XCHG	; Restore return value
+C9          // RET
+C3 95 23    // JMP L11
+2A C1 23    // LHLD __VAR_divide_res
+EB          // XCHG	; Save return value
+E1          // POP H		; Shadow stack pop
+22 C7 23    // SHLD __VAR_divide_a
+E1          // POP H		; Shadow stack pop
+22 C5 23    // SHLD __VAR_divide_b
+E1          // POP H		; Shadow stack pop
+22 C3 23    // SHLD __VAR_divide_sign
+E1          // POP H		; Shadow stack pop
+22 C1 23    // SHLD __VAR_divide_res
+EB          // XCHG	; Restore return value
+C9          // RET
+21 00 00    // LXI H, 0
+EB          // XCHG
+E1          // POP H		; Shadow stack pop
+22 C7 23    // SHLD __VAR_divide_a
+E1          // POP H		; Shadow stack pop
+22 C5 23    // SHLD __VAR_divide_b
+E1          // POP H		; Shadow stack pop
+22 C3 23    // SHLD __VAR_divide_sign
+E1          // POP H		; Shadow stack pop
+22 C1 23    // SHLD __VAR_divide_res
+EB          // XCHG
+C9          // RET
+
+@23C9       // Start at address 0x23C9
+2A 8D 24    // LHLD __VAR_get_sin_res	; Shadow stack push
+E5          // PUSH H
+2A 8F 24    // LHLD __VAR_get_sin_a	; Shadow stack push
+E5          // PUSH H
+21 06 00    // LXI H, 6
+39          // DAD SP
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+22 8F 24    // SHLD __VAR_get_sin_a
+2A 8F 24    // LHLD __VAR_get_sin_a
+E5          // PUSH H
+21 00 00    // LXI H, 0
+D1          // POP D
+7B          // MOV A, E
+95          // SUB L
+7A          // MOV A, D
+9C          // SBB H
+FA F1 23    // JM L14
+21 00 00    // LXI H, 0
+C3 F4 23    // JMP L15
+21 01 00    // LXI H, 1
+7C          // MOV A, H
+B5          // ORA L
+CA 08 24    // JZ L13
+2A 8F 24    // LHLD __VAR_get_sin_a
+E5          // PUSH H
+21 20 00    // LXI H, 32
+D1          // POP D
+19          // DAD D
+22 8F 24    // SHLD __VAR_get_sin_a
+C3 DC 23    // JMP L12
+2A 8F 24    // LHLD __VAR_get_sin_a
+E5          // PUSH H
+21 20 00    // LXI H, 32
+D1          // POP D
+7B          // MOV A, E
+95          // SUB L
+7A          // MOV A, D
+9C          // SBB H
+FA 1D 24    // JM L18
+21 01 00    // LXI H, 1
+C3 20 24    // JMP L19
+21 00 00    // LXI H, 0
+7C          // MOV A, H
+B5          // ORA L
+CA 39 24    // JZ L17
+2A 8F 24    // LHLD __VAR_get_sin_a
+E5          // PUSH H
+21 20 00    // LXI H, 32
+D1          // POP D
+7B          // MOV A, E
+95          // SUB L
+6F          // MOV L, A
+7A          // MOV A, D
+9C          // SBB H
+67          // MOV H, A
+22 8F 24    // SHLD __VAR_get_sin_a
+C3 08 24    // JMP L16
+C3 5C 24    // JMP SKIP_SIN_TABLE
+00 14 26 38 47 53 5C 62 64 62 5C 53 47 38 26 14 // DB 0, 20, 38, 56, 71, 83, 92, 98, 100, 98, 92, 83, 71, 56, 38, 20
+00 EC DA C8 B9 AD A4 9E 9C 9E A4 AD B9 C8 DA EC // DB 0, 236, 218, 200, 185, 173, 164, 158, 156, 158, 164, 173, 185, 200, 218, 236
+2A 8F 24    // LHLD __VAR_get_sin_a      ; Load 'a' into HL (0-31)
+11 3C 24    // LXI D, SIN_TABLE  ; Load table base address
+19          // DAD D             ; HL = SIN_TABLE + a
+6E          // MOV L, M          ; Load the byte at that address
+26 00       // MVI H, 0          ; Assume positive
+7D          // MOV A, L
+E6 80       // ANI 80H           ; Check sign bit
+CA 6E 24    // JZ SIN_POS
+26 FF       // MVI H, 255        ; Sign-extend negative values
+22 8D 24    // SHLD __VAR_get_sin_res    ; Store to C variable
+2A 8D 24    // LHLD __VAR_get_sin_res
+EB          // XCHG	; Save return value
+E1          // POP H		; Shadow stack pop
+22 8F 24    // SHLD __VAR_get_sin_a
+E1          // POP H		; Shadow stack pop
+22 8D 24    // SHLD __VAR_get_sin_res
+EB          // XCHG	; Restore return value
+C9          // RET
+21 00 00    // LXI H, 0
+EB          // XCHG
+E1          // POP H		; Shadow stack pop
+22 8F 24    // SHLD __VAR_get_sin_a
+E1          // POP H		; Shadow stack pop
+22 8D 24    // SHLD __VAR_get_sin_res
+EB          // XCHG
+C9          // RET
+
+@2491       // Start at address 0x2491
+2A C1 24    // LHLD __VAR_get_cos_a	; Shadow stack push
+E5          // PUSH H
+21 04 00    // LXI H, 4
+39          // DAD SP
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+22 C1 24    // SHLD __VAR_get_cos_a
+2A C1 24    // LHLD __VAR_get_cos_a
+E5          // PUSH H
+21 08 00    // LXI H, 8
+D1          // POP D
+19          // DAD D
+E5          // PUSH H
+CD C9 23    // CALL get_sin
+EB          // XCHG	; Save Return Value
+E1          // POP H	; Discard argument
+EB          // XCHG	; Restore Return Value
+EB          // XCHG	; Save return value
+E1          // POP H		; Shadow stack pop
+22 C1 24    // SHLD __VAR_get_cos_a
+EB          // XCHG	; Restore return value
+C9          // RET
+21 00 00    // LXI H, 0
+EB          // XCHG
+E1          // POP H		; Shadow stack pop
+22 C1 24    // SHLD __VAR_get_cos_a
+EB          // XCHG
+C9          // RET
+
+@24C3       // Start at address 0x24C3
+2A 26 26    // LHLD __VAR_update_dir_text_dir	; Shadow stack push
+E5          // PUSH H
+21 04 00    // LXI H, 4
+39          // DAD SP
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+22 26 26    // SHLD __VAR_update_dir_text_dir
+2A 26 26    // LHLD __VAR_update_dir_text_dir
+E5          // PUSH H
+21 00 00    // LXI H, 0
+D1          // POP D
+7B          // MOV A, E
+BD          // CMP L
+C2 EA 24    // JNZ L22
+7A          // MOV A, D
+BC          // CMP H
+C2 EA 24    // JNZ L22
+21 01 00    // LXI H, 1
+C3 ED 24    // JMP L23
+21 00 00    // LXI H, 0
+7C          // MOV A, H
+B5          // ORA L
+CA 12 25    // JZ L20
+C3 FB 24    // JMP L25
+55 50 20 20 20 00 // DB 85,80,32,32,32,0
+21 F5 24    // LXI H, L24
+E5          // PUSH H
+21 01 00    // LXI H, 1
+E5          // PUSH H
+21 06 00    // LXI H, 6
+E5          // PUSH H
+CD F1 21    // CALL puts_at
+EB          // XCHG	; Save Return Value
+E1          // POP H	; Discard argument
+E1          // POP H	; Discard argument
+E1          // POP H	; Discard argument
+EB          // XCHG	; Restore Return Value
+C3 12 25    // JMP L21
+2A 26 26    // LHLD __VAR_update_dir_text_dir
+E5          // PUSH H
+21 01 00    // LXI H, 1
+D1          // POP D
+7B          // MOV A, E
+BD          // CMP L
+C2 2A 25    // JNZ L28
+7A          // MOV A, D
+BC          // CMP H
+C2 2A 25    // JNZ L28
+21 01 00    // LXI H, 1
+C3 2D 25    // JMP L29
+21 00 00    // LXI H, 0
+7C          // MOV A, H
+B5          // ORA L
+CA 52 25    // JZ L26
+C3 3B 25    // JMP L31
+44 4F 57 4E 20 00 // DB 68,79,87,78,32,0
+21 35 25    // LXI H, L30
+E5          // PUSH H
+21 01 00    // LXI H, 1
+E5          // PUSH H
+21 06 00    // LXI H, 6
+E5          // PUSH H
+CD F1 21    // CALL puts_at
+EB          // XCHG	; Save Return Value
+E1          // POP H	; Discard argument
+E1          // POP H	; Discard argument
+E1          // POP H	; Discard argument
+EB          // XCHG	; Restore Return Value
+C3 52 25    // JMP L27
+2A 26 26    // LHLD __VAR_update_dir_text_dir
+E5          // PUSH H
+21 02 00    // LXI H, 2
+D1          // POP D
+7B          // MOV A, E
+BD          // CMP L
+C2 6A 25    // JNZ L34
+7A          // MOV A, D
+BC          // CMP H
+C2 6A 25    // JNZ L34
+21 01 00    // LXI H, 1
+C3 6D 25    // JMP L35
+21 00 00    // LXI H, 0
+7C          // MOV A, H
+B5          // ORA L
+CA 92 25    // JZ L32
+C3 7B 25    // JMP L37
+52 49 47 48 54 00 // DB 82,73,71,72,84,0
+21 75 25    // LXI H, L36
+E5          // PUSH H
+21 01 00    // LXI H, 1
+E5          // PUSH H
+21 06 00    // LXI H, 6
+E5          // PUSH H
+CD F1 21    // CALL puts_at
+EB          // XCHG	; Save Return Value
+E1          // POP H	; Discard argument
+E1          // POP H	; Discard argument
+E1          // POP H	; Discard argument
+EB          // XCHG	; Restore Return Value
+C3 92 25    // JMP L33
+2A 26 26    // LHLD __VAR_update_dir_text_dir
+E5          // PUSH H
+21 03 00    // LXI H, 3
+D1          // POP D
+7B          // MOV A, E
+BD          // CMP L
+C2 AA 25    // JNZ L40
+7A          // MOV A, D
+BC          // CMP H
+C2 AA 25    // JNZ L40
+21 01 00    // LXI H, 1
+C3 AD 25    // JMP L41
+21 00 00    // LXI H, 0
+7C          // MOV A, H
+B5          // ORA L
+CA D2 25    // JZ L38
+C3 BB 25    // JMP L43
+4C 45 46 54 20 00 // DB 76,69,70,84,32,0
+21 B5 25    // LXI H, L42
+E5          // PUSH H
+21 01 00    // LXI H, 1
+E5          // PUSH H
+21 06 00    // LXI H, 6
+E5          // PUSH H
+CD F1 21    // CALL puts_at
+EB          // XCHG	; Save Return Value
+E1          // POP H	; Discard argument
+E1          // POP H	; Discard argument
+E1          // POP H	; Discard argument
+EB          // XCHG	; Restore Return Value
+C3 D2 25    // JMP L39
+2A 26 26    // LHLD __VAR_update_dir_text_dir
+E5          // PUSH H
+21 04 00    // LXI H, 4
+D1          // POP D
+7B          // MOV A, E
+BD          // CMP L
+C2 EA 25    // JNZ L46
+7A          // MOV A, D
+BC          // CMP H
+C2 EA 25    // JNZ L46
+21 01 00    // LXI H, 1
+C3 ED 25    // JMP L47
+21 00 00    // LXI H, 0
+7C          // MOV A, H
+B5          // ORA L
+CA 12 26    // JZ L44
+C3 FB 25    // JMP L49
+53 50 49 4E 20 00 // DB 83,80,73,78,32,0
+21 F5 25    // LXI H, L48
+E5          // PUSH H
+21 01 00    // LXI H, 1
+E5          // PUSH H
+21 06 00    // LXI H, 6
+E5          // PUSH H
+CD F1 21    // CALL puts_at
+EB          // XCHG	; Save Return Value
+E1          // POP H	; Discard argument
+E1          // POP H	; Discard argument
+E1          // POP H	; Discard argument
+EB          // XCHG	; Restore Return Value
+C3 12 26    // JMP L45
+21 00 00    // LXI H, 0
+EB          // XCHG	; Save return value
+E1          // POP H		; Shadow stack pop
+22 26 26    // SHLD __VAR_update_dir_text_dir
+EB          // XCHG	; Restore return value
+C9          // RET
+21 00 00    // LXI H, 0
+EB          // XCHG
+E1          // POP H		; Shadow stack pop
+22 26 26    // SHLD __VAR_update_dir_text_dir
+EB          // XCHG
+C9          // RET
+
+@2628       // Start at address 0x2628
+2A 0A 27    // LHLD __VAR_save_old_coordinates_i	; Shadow stack push
+E5          // PUSH H
+2A 0C 27    // LHLD __VAR_save_old_coordinates_old_py	; Shadow stack push
+E5          // PUSH H
+2A 0E 27    // LHLD __VAR_save_old_coordinates_old_px	; Shadow stack push
+E5          // PUSH H
+2A 10 27    // LHLD __VAR_save_old_coordinates_py	; Shadow stack push
+E5          // PUSH H
+2A 12 27    // LHLD __VAR_save_old_coordinates_px	; Shadow stack push
+E5          // PUSH H
+21 0C 00    // LXI H, 12
+39          // DAD SP
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+22 12 27    // SHLD __VAR_save_old_coordinates_px
+21 0E 00    // LXI H, 14
+39          // DAD SP
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+22 10 27    // SHLD __VAR_save_old_coordinates_py
+21 10 00    // LXI H, 16
+39          // DAD SP
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+22 0E 27    // SHLD __VAR_save_old_coordinates_old_px
+21 12 00    // LXI H, 18
+39          // DAD SP
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+22 0C 27    // SHLD __VAR_save_old_coordinates_old_py
+21 00 00    // LXI H, 0
+22 0A 27    // SHLD __VAR_save_old_coordinates_i
+2A 0A 27    // LHLD __VAR_save_old_coordinates_i
+E5          // PUSH H
+21 08 00    // LXI H, 8
+D1          // POP D
+7B          // MOV A, E
+95          // SUB L
+7A          // MOV A, D
+9C          // SBB H
+FA 83 26    // JM L53
+21 00 00    // LXI H, 0
+C3 86 26    // JMP L54
+21 01 00    // LXI H, 1
+7C          // MOV A, H
+B5          // ORA L
+CA D6 26    // JZ L51
+2A 0A 27    // LHLD __VAR_save_old_coordinates_i
+29          // DAD H
+E5          // PUSH H
+2A 12 27    // LHLD __VAR_save_old_coordinates_px
+D1          // POP D
+19          // DAD D
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+E5          // PUSH H
+2A 0A 27    // LHLD __VAR_save_old_coordinates_i
+29          // DAD H
+E5          // PUSH H
+2A 0E 27    // LHLD __VAR_save_old_coordinates_old_px
+D1          // POP D
+19          // DAD D
+D1          // POP D
+73          // MOV M, E
+23          // INX H
+72          // MOV M, D
+EB          // XCHG
+2A 0A 27    // LHLD __VAR_save_old_coordinates_i
+29          // DAD H
+E5          // PUSH H
+2A 10 27    // LHLD __VAR_save_old_coordinates_py
+D1          // POP D
+19          // DAD D
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+E5          // PUSH H
+2A 0A 27    // LHLD __VAR_save_old_coordinates_i
+29          // DAD H
+E5          // PUSH H
+2A 0C 27    // LHLD __VAR_save_old_coordinates_old_py
+D1          // POP D
+19          // DAD D
+D1          // POP D
+73          // MOV M, E
+23          // INX H
+72          // MOV M, D
+EB          // XCHG
+2A 0A 27    // LHLD __VAR_save_old_coordinates_i
+E5          // PUSH H
+21 01 00    // LXI H, 1
+D1          // POP D
+19          // DAD D
+22 0A 27    // SHLD __VAR_save_old_coordinates_i
+C3 6E 26    // JMP L50
+21 00 00    // LXI H, 0
+EB          // XCHG	; Save return value
+E1          // POP H		; Shadow stack pop
+22 12 27    // SHLD __VAR_save_old_coordinates_px
+E1          // POP H		; Shadow stack pop
+22 10 27    // SHLD __VAR_save_old_coordinates_py
+E1          // POP H		; Shadow stack pop
+22 0E 27    // SHLD __VAR_save_old_coordinates_old_px
+E1          // POP H		; Shadow stack pop
+22 0C 27    // SHLD __VAR_save_old_coordinates_old_py
+E1          // POP H		; Shadow stack pop
+22 0A 27    // SHLD __VAR_save_old_coordinates_i
+EB          // XCHG	; Restore return value
+C9          // RET
+21 00 00    // LXI H, 0
+EB          // XCHG
+E1          // POP H		; Shadow stack pop
+22 12 27    // SHLD __VAR_save_old_coordinates_px
+E1          // POP H		; Shadow stack pop
+22 10 27    // SHLD __VAR_save_old_coordinates_py
+E1          // POP H		; Shadow stack pop
+22 0E 27    // SHLD __VAR_save_old_coordinates_old_px
+E1          // POP H		; Shadow stack pop
+22 0C 27    // SHLD __VAR_save_old_coordinates_old_py
+E1          // POP H		; Shadow stack pop
+22 0A 27    // SHLD __VAR_save_old_coordinates_i
+EB          // XCHG
+C9          // RET
+
+@2714       // Start at address 0x2714
+2A 88 29    // LHLD __VAR_project_vertex_z_dist	; Shadow stack push
+E5          // PUSH H
+2A 8A 29    // LHLD __VAR_project_vertex_z2	; Shadow stack push
+E5          // PUSH H
+2A 8C 29    // LHLD __VAR_project_vertex_y1	; Shadow stack push
+E5          // PUSH H
+2A 8E 29    // LHLD __VAR_project_vertex_cos_x	; Shadow stack push
+E5          // PUSH H
+2A 90 29    // LHLD __VAR_project_vertex_sin_x	; Shadow stack push
+E5          // PUSH H
+2A 92 29    // LHLD __VAR_project_vertex_z1	; Shadow stack push
+E5          // PUSH H
+2A 94 29    // LHLD __VAR_project_vertex_x1	; Shadow stack push
+E5          // PUSH H
+2A 96 29    // LHLD __VAR_project_vertex_cos_y	; Shadow stack push
+E5          // PUSH H
+2A 98 29    // LHLD __VAR_project_vertex_sin_y	; Shadow stack push
+E5          // PUSH H
+2A 9A 29    // LHLD __VAR_project_vertex_py_arr	; Shadow stack push
+E5          // PUSH H
+2A 9C 29    // LHLD __VAR_project_vertex_px_arr	; Shadow stack push
+E5          // PUSH H
+2A 9E 29    // LHLD __VAR_project_vertex_ay	; Shadow stack push
+E5          // PUSH H
+2A A0 29    // LHLD __VAR_project_vertex_ax	; Shadow stack push
+E5          // PUSH H
+2A A2 29    // LHLD __VAR_project_vertex_z	; Shadow stack push
+E5          // PUSH H
+2A A4 29    // LHLD __VAR_project_vertex_y	; Shadow stack push
+E5          // PUSH H
+2A A6 29    // LHLD __VAR_project_vertex_x	; Shadow stack push
+E5          // PUSH H
+2A A8 29    // LHLD __VAR_project_vertex_idx	; Shadow stack push
+E5          // PUSH H
+21 24 00    // LXI H, 36
+39          // DAD SP
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+22 A8 29    // SHLD __VAR_project_vertex_idx
+21 26 00    // LXI H, 38
+39          // DAD SP
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+22 A6 29    // SHLD __VAR_project_vertex_x
+21 28 00    // LXI H, 40
+39          // DAD SP
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+22 A4 29    // SHLD __VAR_project_vertex_y
+21 2A 00    // LXI H, 42
+39          // DAD SP
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+22 A2 29    // SHLD __VAR_project_vertex_z
+21 2C 00    // LXI H, 44
+39          // DAD SP
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+22 A0 29    // SHLD __VAR_project_vertex_ax
+21 2E 00    // LXI H, 46
+39          // DAD SP
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+22 9E 29    // SHLD __VAR_project_vertex_ay
+21 30 00    // LXI H, 48
+39          // DAD SP
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+22 9C 29    // SHLD __VAR_project_vertex_px_arr
+21 32 00    // LXI H, 50
+39          // DAD SP
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+22 9A 29    // SHLD __VAR_project_vertex_py_arr
+2A 9E 29    // LHLD __VAR_project_vertex_ay
+E5          // PUSH H
+CD C9 23    // CALL get_sin
+EB          // XCHG	; Save Return Value
+E1          // POP H	; Discard argument
+EB          // XCHG	; Restore Return Value
+22 98 29    // SHLD __VAR_project_vertex_sin_y
+2A 9E 29    // LHLD __VAR_project_vertex_ay
+E5          // PUSH H
+CD 91 24    // CALL get_cos
+EB          // XCHG	; Save Return Value
+E1          // POP H	; Discard argument
+EB          // XCHG	; Restore Return Value
+22 96 29    // SHLD __VAR_project_vertex_cos_y
+21 64 00    // LXI H, 100
+E5          // PUSH H
+2A A6 29    // LHLD __VAR_project_vertex_x
+E5          // PUSH H
+2A 96 29    // LHLD __VAR_project_vertex_cos_y
+D1          // POP D
+CD 24 34    // CALL __mul
+E5          // PUSH H
+2A A2 29    // LHLD __VAR_project_vertex_z
+E5          // PUSH H
+2A 98 29    // LHLD __VAR_project_vertex_sin_y
+D1          // POP D
+CD 24 34    // CALL __mul
+D1          // POP D
+19          // DAD D
+E5          // PUSH H
+CD B7 22    // CALL divide
+EB          // XCHG	; Save Return Value
+E1          // POP H	; Discard argument
+E1          // POP H	; Discard argument
+EB          // XCHG	; Restore Return Value
+22 94 29    // SHLD __VAR_project_vertex_x1
+21 64 00    // LXI H, 100
+E5          // PUSH H
+2A A2 29    // LHLD __VAR_project_vertex_z
+E5          // PUSH H
+2A 96 29    // LHLD __VAR_project_vertex_cos_y
+D1          // POP D
+CD 24 34    // CALL __mul
+E5          // PUSH H
+2A A6 29    // LHLD __VAR_project_vertex_x
+E5          // PUSH H
+2A 98 29    // LHLD __VAR_project_vertex_sin_y
+D1          // POP D
+CD 24 34    // CALL __mul
+D1          // POP D
+7B          // MOV A, E
+95          // SUB L
+6F          // MOV L, A
+7A          // MOV A, D
+9C          // SBB H
 67          // MOV H, A
 E5          // PUSH H
-2A 79 31    // LHLD __VAR_put_pixel_vram_addr
+CD B7 22    // CALL divide
+EB          // XCHG	; Save Return Value
+E1          // POP H	; Discard argument
+E1          // POP H	; Discard argument
+EB          // XCHG	; Restore Return Value
+22 92 29    // SHLD __VAR_project_vertex_z1
+2A A0 29    // LHLD __VAR_project_vertex_ax
+E5          // PUSH H
+CD C9 23    // CALL get_sin
+EB          // XCHG	; Save Return Value
+E1          // POP H	; Discard argument
+EB          // XCHG	; Restore Return Value
+22 90 29    // SHLD __VAR_project_vertex_sin_x
+2A A0 29    // LHLD __VAR_project_vertex_ax
+E5          // PUSH H
+CD 91 24    // CALL get_cos
+EB          // XCHG	; Save Return Value
+E1          // POP H	; Discard argument
+EB          // XCHG	; Restore Return Value
+22 8E 29    // SHLD __VAR_project_vertex_cos_x
+21 64 00    // LXI H, 100
+E5          // PUSH H
+2A A4 29    // LHLD __VAR_project_vertex_y
+E5          // PUSH H
+2A 8E 29    // LHLD __VAR_project_vertex_cos_x
+D1          // POP D
+CD 24 34    // CALL __mul
+E5          // PUSH H
+2A 92 29    // LHLD __VAR_project_vertex_z1
+E5          // PUSH H
+2A 90 29    // LHLD __VAR_project_vertex_sin_x
+D1          // POP D
+CD 24 34    // CALL __mul
+D1          // POP D
+7B          // MOV A, E
+95          // SUB L
+6F          // MOV L, A
+7A          // MOV A, D
+9C          // SBB H
+67          // MOV H, A
+E5          // PUSH H
+CD B7 22    // CALL divide
+EB          // XCHG	; Save Return Value
+E1          // POP H	; Discard argument
+E1          // POP H	; Discard argument
+EB          // XCHG	; Restore Return Value
+22 8C 29    // SHLD __VAR_project_vertex_y1
+21 64 00    // LXI H, 100
+E5          // PUSH H
+2A 92 29    // LHLD __VAR_project_vertex_z1
+E5          // PUSH H
+2A 8E 29    // LHLD __VAR_project_vertex_cos_x
+D1          // POP D
+CD 24 34    // CALL __mul
+E5          // PUSH H
+2A A4 29    // LHLD __VAR_project_vertex_y
+E5          // PUSH H
+2A 90 29    // LHLD __VAR_project_vertex_sin_x
+D1          // POP D
+CD 24 34    // CALL __mul
+D1          // POP D
+19          // DAD D
+E5          // PUSH H
+CD B7 22    // CALL divide
+EB          // XCHG	; Save Return Value
+E1          // POP H	; Discard argument
+E1          // POP H	; Discard argument
+EB          // XCHG	; Restore Return Value
+22 8A 29    // SHLD __VAR_project_vertex_z2
+2A 8A 29    // LHLD __VAR_project_vertex_z2
+E5          // PUSH H
+21 96 00    // LXI H, 150
+D1          // POP D
+19          // DAD D
+22 88 29    // SHLD __VAR_project_vertex_z_dist
+2A 88 29    // LHLD __VAR_project_vertex_z_dist
+E5          // PUSH H
+2A 94 29    // LHLD __VAR_project_vertex_x1
+E5          // PUSH H
+21 80 00    // LXI H, 128
+D1          // POP D
+CD 24 34    // CALL __mul
+E5          // PUSH H
+CD B7 22    // CALL divide
+EB          // XCHG	; Save Return Value
+E1          // POP H	; Discard argument
+E1          // POP H	; Discard argument
+EB          // XCHG	; Restore Return Value
+E5          // PUSH H
+21 80 00    // LXI H, 128
+D1          // POP D
+19          // DAD D
+E5          // PUSH H
+2A A8 29    // LHLD __VAR_project_vertex_idx
+29          // DAD H
+E5          // PUSH H
+2A 9C 29    // LHLD __VAR_project_vertex_px_arr
+D1          // POP D
+19          // DAD D
+D1          // POP D
+73          // MOV M, E
+23          // INX H
+72          // MOV M, D
+EB          // XCHG
+2A 88 29    // LHLD __VAR_project_vertex_z_dist
+E5          // PUSH H
+2A 8C 29    // LHLD __VAR_project_vertex_y1
+E5          // PUSH H
+21 80 00    // LXI H, 128
+D1          // POP D
+CD 24 34    // CALL __mul
+E5          // PUSH H
+CD B7 22    // CALL divide
+EB          // XCHG	; Save Return Value
+E1          // POP H	; Discard argument
+E1          // POP H	; Discard argument
+EB          // XCHG	; Restore Return Value
+E5          // PUSH H
+21 78 00    // LXI H, 120
+D1          // POP D
+19          // DAD D
+E5          // PUSH H
+2A A8 29    // LHLD __VAR_project_vertex_idx
+29          // DAD H
+E5          // PUSH H
+2A 9A 29    // LHLD __VAR_project_vertex_py_arr
+D1          // POP D
+19          // DAD D
 D1          // POP D
 73          // MOV M, E
 23          // INX H
@@ -193,573 +1122,1546 @@ EB          // XCHG
 21 00 00    // LXI H, 0
 EB          // XCHG	; Save return value
 E1          // POP H		; Shadow stack pop
-22 7D 31    // SHLD __VAR_put_pixel_x
+22 A8 29    // SHLD __VAR_project_vertex_idx
 E1          // POP H		; Shadow stack pop
-22 7B 31    // SHLD __VAR_put_pixel_y
+22 A6 29    // SHLD __VAR_project_vertex_x
 E1          // POP H		; Shadow stack pop
-22 79 31    // SHLD __VAR_put_pixel_vram_addr
+22 A4 29    // SHLD __VAR_project_vertex_y
 E1          // POP H		; Shadow stack pop
-22 77 31    // SHLD __VAR_put_pixel_rem
+22 A2 29    // SHLD __VAR_project_vertex_z
 E1          // POP H		; Shadow stack pop
-22 75 31    // SHLD __VAR_put_pixel_mask
+22 A0 29    // SHLD __VAR_project_vertex_ax
+E1          // POP H		; Shadow stack pop
+22 9E 29    // SHLD __VAR_project_vertex_ay
+E1          // POP H		; Shadow stack pop
+22 9C 29    // SHLD __VAR_project_vertex_px_arr
+E1          // POP H		; Shadow stack pop
+22 9A 29    // SHLD __VAR_project_vertex_py_arr
+E1          // POP H		; Shadow stack pop
+22 98 29    // SHLD __VAR_project_vertex_sin_y
+E1          // POP H		; Shadow stack pop
+22 96 29    // SHLD __VAR_project_vertex_cos_y
+E1          // POP H		; Shadow stack pop
+22 94 29    // SHLD __VAR_project_vertex_x1
+E1          // POP H		; Shadow stack pop
+22 92 29    // SHLD __VAR_project_vertex_z1
+E1          // POP H		; Shadow stack pop
+22 90 29    // SHLD __VAR_project_vertex_sin_x
+E1          // POP H		; Shadow stack pop
+22 8E 29    // SHLD __VAR_project_vertex_cos_x
+E1          // POP H		; Shadow stack pop
+22 8C 29    // SHLD __VAR_project_vertex_y1
+E1          // POP H		; Shadow stack pop
+22 8A 29    // SHLD __VAR_project_vertex_z2
+E1          // POP H		; Shadow stack pop
+22 88 29    // SHLD __VAR_project_vertex_z_dist
 EB          // XCHG	; Restore return value
 C9          // RET
 21 00 00    // LXI H, 0
 EB          // XCHG
 E1          // POP H		; Shadow stack pop
-22 7D 31    // SHLD __VAR_put_pixel_x
+22 A8 29    // SHLD __VAR_project_vertex_idx
 E1          // POP H		; Shadow stack pop
-22 7B 31    // SHLD __VAR_put_pixel_y
+22 A6 29    // SHLD __VAR_project_vertex_x
 E1          // POP H		; Shadow stack pop
-22 79 31    // SHLD __VAR_put_pixel_vram_addr
+22 A4 29    // SHLD __VAR_project_vertex_y
 E1          // POP H		; Shadow stack pop
-22 77 31    // SHLD __VAR_put_pixel_rem
+22 A2 29    // SHLD __VAR_project_vertex_z
 E1          // POP H		; Shadow stack pop
-22 75 31    // SHLD __VAR_put_pixel_mask
+22 A0 29    // SHLD __VAR_project_vertex_ax
+E1          // POP H		; Shadow stack pop
+22 9E 29    // SHLD __VAR_project_vertex_ay
+E1          // POP H		; Shadow stack pop
+22 9C 29    // SHLD __VAR_project_vertex_px_arr
+E1          // POP H		; Shadow stack pop
+22 9A 29    // SHLD __VAR_project_vertex_py_arr
+E1          // POP H		; Shadow stack pop
+22 98 29    // SHLD __VAR_project_vertex_sin_y
+E1          // POP H		; Shadow stack pop
+22 96 29    // SHLD __VAR_project_vertex_cos_y
+E1          // POP H		; Shadow stack pop
+22 94 29    // SHLD __VAR_project_vertex_x1
+E1          // POP H		; Shadow stack pop
+22 92 29    // SHLD __VAR_project_vertex_z1
+E1          // POP H		; Shadow stack pop
+22 90 29    // SHLD __VAR_project_vertex_sin_x
+E1          // POP H		; Shadow stack pop
+22 8E 29    // SHLD __VAR_project_vertex_cos_x
+E1          // POP H		; Shadow stack pop
+22 8C 29    // SHLD __VAR_project_vertex_y1
+E1          // POP H		; Shadow stack pop
+22 8A 29    // SHLD __VAR_project_vertex_z2
+E1          // POP H		; Shadow stack pop
+22 88 29    // SHLD __VAR_project_vertex_z_dist
 EB          // XCHG
 C9          // RET
 
-@317F       // Start at address 0x317F
-2A FF 32    // LHLD __VAR_draw_circle_points_y	; Shadow stack push
+@29AA       // Start at address 0x29AA
+2A 93 2E    // LHLD __VAR_draw_cube_edges_p7y	; Shadow stack push
 E5          // PUSH H
-2A 01 33    // LHLD __VAR_draw_circle_points_x	; Shadow stack push
+2A 95 2E    // LHLD __VAR_draw_cube_edges_p7x	; Shadow stack push
 E5          // PUSH H
-2A 03 33    // LHLD __VAR_draw_circle_points_yc	; Shadow stack push
+2A 97 2E    // LHLD __VAR_draw_cube_edges_p6y	; Shadow stack push
 E5          // PUSH H
-2A 05 33    // LHLD __VAR_draw_circle_points_xc	; Shadow stack push
+2A 99 2E    // LHLD __VAR_draw_cube_edges_p6x	; Shadow stack push
 E5          // PUSH H
+2A 9B 2E    // LHLD __VAR_draw_cube_edges_p5y	; Shadow stack push
+E5          // PUSH H
+2A 9D 2E    // LHLD __VAR_draw_cube_edges_p5x	; Shadow stack push
+E5          // PUSH H
+2A 9F 2E    // LHLD __VAR_draw_cube_edges_p4y	; Shadow stack push
+E5          // PUSH H
+2A A1 2E    // LHLD __VAR_draw_cube_edges_p4x	; Shadow stack push
+E5          // PUSH H
+2A A3 2E    // LHLD __VAR_draw_cube_edges_p3y	; Shadow stack push
+E5          // PUSH H
+2A A5 2E    // LHLD __VAR_draw_cube_edges_p3x	; Shadow stack push
+E5          // PUSH H
+2A A7 2E    // LHLD __VAR_draw_cube_edges_p2y	; Shadow stack push
+E5          // PUSH H
+2A A9 2E    // LHLD __VAR_draw_cube_edges_p2x	; Shadow stack push
+E5          // PUSH H
+2A AB 2E    // LHLD __VAR_draw_cube_edges_p1y	; Shadow stack push
+E5          // PUSH H
+2A AD 2E    // LHLD __VAR_draw_cube_edges_p1x	; Shadow stack push
+E5          // PUSH H
+2A AF 2E    // LHLD __VAR_draw_cube_edges_p0y	; Shadow stack push
+E5          // PUSH H
+2A B1 2E    // LHLD __VAR_draw_cube_edges_p0x	; Shadow stack push
+E5          // PUSH H
+2A B3 2E    // LHLD __VAR_draw_cube_edges_old_py	; Shadow stack push
+E5          // PUSH H
+2A B5 2E    // LHLD __VAR_draw_cube_edges_old_px	; Shadow stack push
+E5          // PUSH H
+2A B7 2E    // LHLD __VAR_draw_cube_edges_py	; Shadow stack push
+E5          // PUSH H
+2A B9 2E    // LHLD __VAR_draw_cube_edges_px	; Shadow stack push
+E5          // PUSH H
+2A BB 2E    // LHLD __VAR_draw_cube_edges_use_old	; Shadow stack push
+E5          // PUSH H
+2A BD 2E    // LHLD __VAR_draw_cube_edges_color	; Shadow stack push
+E5          // PUSH H
+21 2E 00    // LXI H, 46
+39          // DAD SP
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+22 BD 2E    // SHLD __VAR_draw_cube_edges_color
+21 30 00    // LXI H, 48
+39          // DAD SP
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+22 BB 2E    // SHLD __VAR_draw_cube_edges_use_old
+21 32 00    // LXI H, 50
+39          // DAD SP
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+22 B9 2E    // SHLD __VAR_draw_cube_edges_px
+21 34 00    // LXI H, 52
+39          // DAD SP
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+22 B7 2E    // SHLD __VAR_draw_cube_edges_py
+21 36 00    // LXI H, 54
+39          // DAD SP
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+22 B5 2E    // SHLD __VAR_draw_cube_edges_old_px
+21 38 00    // LXI H, 56
+39          // DAD SP
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+22 B3 2E    // SHLD __VAR_draw_cube_edges_old_py
+2A BB 2E    // LHLD __VAR_draw_cube_edges_use_old
+7C          // MOV A, H
+B5          // ORA L
+CA 5F 2B    // JZ L55
+21 00 00    // LXI H, 0
+29          // DAD H
+E5          // PUSH H
+2A B5 2E    // LHLD __VAR_draw_cube_edges_old_px
+D1          // POP D
+19          // DAD D
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+22 B1 2E    // SHLD __VAR_draw_cube_edges_p0x
+21 00 00    // LXI H, 0
+29          // DAD H
+E5          // PUSH H
+2A B3 2E    // LHLD __VAR_draw_cube_edges_old_py
+D1          // POP D
+19          // DAD D
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+22 AF 2E    // SHLD __VAR_draw_cube_edges_p0y
+21 01 00    // LXI H, 1
+29          // DAD H
+E5          // PUSH H
+2A B5 2E    // LHLD __VAR_draw_cube_edges_old_px
+D1          // POP D
+19          // DAD D
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+22 AD 2E    // SHLD __VAR_draw_cube_edges_p1x
+21 01 00    // LXI H, 1
+29          // DAD H
+E5          // PUSH H
+2A B3 2E    // LHLD __VAR_draw_cube_edges_old_py
+D1          // POP D
+19          // DAD D
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+22 AB 2E    // SHLD __VAR_draw_cube_edges_p1y
+21 02 00    // LXI H, 2
+29          // DAD H
+E5          // PUSH H
+2A B5 2E    // LHLD __VAR_draw_cube_edges_old_px
+D1          // POP D
+19          // DAD D
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+22 A9 2E    // SHLD __VAR_draw_cube_edges_p2x
+21 02 00    // LXI H, 2
+29          // DAD H
+E5          // PUSH H
+2A B3 2E    // LHLD __VAR_draw_cube_edges_old_py
+D1          // POP D
+19          // DAD D
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+22 A7 2E    // SHLD __VAR_draw_cube_edges_p2y
+21 03 00    // LXI H, 3
+29          // DAD H
+E5          // PUSH H
+2A B5 2E    // LHLD __VAR_draw_cube_edges_old_px
+D1          // POP D
+19          // DAD D
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+22 A5 2E    // SHLD __VAR_draw_cube_edges_p3x
+21 03 00    // LXI H, 3
+29          // DAD H
+E5          // PUSH H
+2A B3 2E    // LHLD __VAR_draw_cube_edges_old_py
+D1          // POP D
+19          // DAD D
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+22 A3 2E    // SHLD __VAR_draw_cube_edges_p3y
+21 04 00    // LXI H, 4
+29          // DAD H
+E5          // PUSH H
+2A B5 2E    // LHLD __VAR_draw_cube_edges_old_px
+D1          // POP D
+19          // DAD D
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+22 A1 2E    // SHLD __VAR_draw_cube_edges_p4x
+21 04 00    // LXI H, 4
+29          // DAD H
+E5          // PUSH H
+2A B3 2E    // LHLD __VAR_draw_cube_edges_old_py
+D1          // POP D
+19          // DAD D
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+22 9F 2E    // SHLD __VAR_draw_cube_edges_p4y
+21 05 00    // LXI H, 5
+29          // DAD H
+E5          // PUSH H
+2A B5 2E    // LHLD __VAR_draw_cube_edges_old_px
+D1          // POP D
+19          // DAD D
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+22 9D 2E    // SHLD __VAR_draw_cube_edges_p5x
+21 05 00    // LXI H, 5
+29          // DAD H
+E5          // PUSH H
+2A B3 2E    // LHLD __VAR_draw_cube_edges_old_py
+D1          // POP D
+19          // DAD D
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+22 9B 2E    // SHLD __VAR_draw_cube_edges_p5y
+21 06 00    // LXI H, 6
+29          // DAD H
+E5          // PUSH H
+2A B5 2E    // LHLD __VAR_draw_cube_edges_old_px
+D1          // POP D
+19          // DAD D
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+22 99 2E    // SHLD __VAR_draw_cube_edges_p6x
+21 06 00    // LXI H, 6
+29          // DAD H
+E5          // PUSH H
+2A B3 2E    // LHLD __VAR_draw_cube_edges_old_py
+D1          // POP D
+19          // DAD D
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+22 97 2E    // SHLD __VAR_draw_cube_edges_p6y
+21 07 00    // LXI H, 7
+29          // DAD H
+E5          // PUSH H
+2A B5 2E    // LHLD __VAR_draw_cube_edges_old_px
+D1          // POP D
+19          // DAD D
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+22 95 2E    // SHLD __VAR_draw_cube_edges_p7x
+21 07 00    // LXI H, 7
+29          // DAD H
+E5          // PUSH H
+2A B3 2E    // LHLD __VAR_draw_cube_edges_old_py
+D1          // POP D
+19          // DAD D
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+22 93 2E    // SHLD __VAR_draw_cube_edges_p7y
+C3 6F 2C    // JMP L56
+21 00 00    // LXI H, 0
+29          // DAD H
+E5          // PUSH H
+2A B9 2E    // LHLD __VAR_draw_cube_edges_px
+D1          // POP D
+19          // DAD D
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+22 B1 2E    // SHLD __VAR_draw_cube_edges_p0x
+21 00 00    // LXI H, 0
+29          // DAD H
+E5          // PUSH H
+2A B7 2E    // LHLD __VAR_draw_cube_edges_py
+D1          // POP D
+19          // DAD D
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+22 AF 2E    // SHLD __VAR_draw_cube_edges_p0y
+21 01 00    // LXI H, 1
+29          // DAD H
+E5          // PUSH H
+2A B9 2E    // LHLD __VAR_draw_cube_edges_px
+D1          // POP D
+19          // DAD D
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+22 AD 2E    // SHLD __VAR_draw_cube_edges_p1x
+21 01 00    // LXI H, 1
+29          // DAD H
+E5          // PUSH H
+2A B7 2E    // LHLD __VAR_draw_cube_edges_py
+D1          // POP D
+19          // DAD D
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+22 AB 2E    // SHLD __VAR_draw_cube_edges_p1y
+21 02 00    // LXI H, 2
+29          // DAD H
+E5          // PUSH H
+2A B9 2E    // LHLD __VAR_draw_cube_edges_px
+D1          // POP D
+19          // DAD D
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+22 A9 2E    // SHLD __VAR_draw_cube_edges_p2x
+21 02 00    // LXI H, 2
+29          // DAD H
+E5          // PUSH H
+2A B7 2E    // LHLD __VAR_draw_cube_edges_py
+D1          // POP D
+19          // DAD D
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+22 A7 2E    // SHLD __VAR_draw_cube_edges_p2y
+21 03 00    // LXI H, 3
+29          // DAD H
+E5          // PUSH H
+2A B9 2E    // LHLD __VAR_draw_cube_edges_px
+D1          // POP D
+19          // DAD D
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+22 A5 2E    // SHLD __VAR_draw_cube_edges_p3x
+21 03 00    // LXI H, 3
+29          // DAD H
+E5          // PUSH H
+2A B7 2E    // LHLD __VAR_draw_cube_edges_py
+D1          // POP D
+19          // DAD D
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+22 A3 2E    // SHLD __VAR_draw_cube_edges_p3y
+21 04 00    // LXI H, 4
+29          // DAD H
+E5          // PUSH H
+2A B9 2E    // LHLD __VAR_draw_cube_edges_px
+D1          // POP D
+19          // DAD D
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+22 A1 2E    // SHLD __VAR_draw_cube_edges_p4x
+21 04 00    // LXI H, 4
+29          // DAD H
+E5          // PUSH H
+2A B7 2E    // LHLD __VAR_draw_cube_edges_py
+D1          // POP D
+19          // DAD D
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+22 9F 2E    // SHLD __VAR_draw_cube_edges_p4y
+21 05 00    // LXI H, 5
+29          // DAD H
+E5          // PUSH H
+2A B9 2E    // LHLD __VAR_draw_cube_edges_px
+D1          // POP D
+19          // DAD D
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+22 9D 2E    // SHLD __VAR_draw_cube_edges_p5x
+21 05 00    // LXI H, 5
+29          // DAD H
+E5          // PUSH H
+2A B7 2E    // LHLD __VAR_draw_cube_edges_py
+D1          // POP D
+19          // DAD D
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+22 9B 2E    // SHLD __VAR_draw_cube_edges_p5y
+21 06 00    // LXI H, 6
+29          // DAD H
+E5          // PUSH H
+2A B9 2E    // LHLD __VAR_draw_cube_edges_px
+D1          // POP D
+19          // DAD D
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+22 99 2E    // SHLD __VAR_draw_cube_edges_p6x
+21 06 00    // LXI H, 6
+29          // DAD H
+E5          // PUSH H
+2A B7 2E    // LHLD __VAR_draw_cube_edges_py
+D1          // POP D
+19          // DAD D
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+22 97 2E    // SHLD __VAR_draw_cube_edges_p6y
+21 07 00    // LXI H, 7
+29          // DAD H
+E5          // PUSH H
+2A B9 2E    // LHLD __VAR_draw_cube_edges_px
+D1          // POP D
+19          // DAD D
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+22 95 2E    // SHLD __VAR_draw_cube_edges_p7x
+21 07 00    // LXI H, 7
+29          // DAD H
+E5          // PUSH H
+2A B7 2E    // LHLD __VAR_draw_cube_edges_py
+D1          // POP D
+19          // DAD D
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+EB          // XCHG
+22 93 2E    // SHLD __VAR_draw_cube_edges_p7y
+2A BD 2E    // LHLD __VAR_draw_cube_edges_color
+E5          // PUSH H
+2A AB 2E    // LHLD __VAR_draw_cube_edges_p1y
+E5          // PUSH H
+2A AD 2E    // LHLD __VAR_draw_cube_edges_p1x
+E5          // PUSH H
+2A AF 2E    // LHLD __VAR_draw_cube_edges_p0y
+E5          // PUSH H
+2A B1 2E    // LHLD __VAR_draw_cube_edges_p0x
+E5          // PUSH H
+CD 7A 21    // CALL draw_line
+EB          // XCHG	; Save Return Value
 21 0A 00    // LXI H, 10
 39          // DAD SP
-5E          // MOV E, M
-23          // INX H
-56          // MOV D, M
-EB          // XCHG
-22 05 33    // SHLD __VAR_draw_circle_points_xc
-21 0C 00    // LXI H, 12
-39          // DAD SP
-5E          // MOV E, M
-23          // INX H
-56          // MOV D, M
-EB          // XCHG
-22 03 33    // SHLD __VAR_draw_circle_points_yc
-21 0E 00    // LXI H, 14
-39          // DAD SP
-5E          // MOV E, M
-23          // INX H
-56          // MOV D, M
-EB          // XCHG
-22 01 33    // SHLD __VAR_draw_circle_points_x
-21 10 00    // LXI H, 16
-39          // DAD SP
-5E          // MOV E, M
-23          // INX H
-56          // MOV D, M
-EB          // XCHG
-22 FF 32    // SHLD __VAR_draw_circle_points_y
-2A 03 33    // LHLD __VAR_draw_circle_points_yc
+F9          // SPHL
+EB          // XCHG	; Restore Return Value
+2A BD 2E    // LHLD __VAR_draw_cube_edges_color
 E5          // PUSH H
-2A FF 32    // LHLD __VAR_draw_circle_points_y
-D1          // POP D
-19          // DAD D
+2A A7 2E    // LHLD __VAR_draw_cube_edges_p2y
 E5          // PUSH H
-2A 05 33    // LHLD __VAR_draw_circle_points_xc
+2A A9 2E    // LHLD __VAR_draw_cube_edges_p2x
 E5          // PUSH H
-2A 01 33    // LHLD __VAR_draw_circle_points_x
-D1          // POP D
-19          // DAD D
+2A AB 2E    // LHLD __VAR_draw_cube_edges_p1y
 E5          // PUSH H
-CD 7F 30    // CALL put_pixel
+2A AD 2E    // LHLD __VAR_draw_cube_edges_p1x
+E5          // PUSH H
+CD 7A 21    // CALL draw_line
 EB          // XCHG	; Save Return Value
-21 04 00    // LXI H, 4
+21 0A 00    // LXI H, 10
 39          // DAD SP
 F9          // SPHL
 EB          // XCHG	; Restore Return Value
-2A 03 33    // LHLD __VAR_draw_circle_points_yc
+2A BD 2E    // LHLD __VAR_draw_cube_edges_color
 E5          // PUSH H
-2A FF 32    // LHLD __VAR_draw_circle_points_y
-D1          // POP D
-19          // DAD D
+2A A3 2E    // LHLD __VAR_draw_cube_edges_p3y
 E5          // PUSH H
-2A 05 33    // LHLD __VAR_draw_circle_points_xc
+2A A5 2E    // LHLD __VAR_draw_cube_edges_p3x
 E5          // PUSH H
-2A 01 33    // LHLD __VAR_draw_circle_points_x
-D1          // POP D
-7B          // MOV A, E
-95          // SUB L
-6F          // MOV L, A
-7A          // MOV A, D
-9C          // SBB H
-67          // MOV H, A
+2A A7 2E    // LHLD __VAR_draw_cube_edges_p2y
 E5          // PUSH H
-CD 7F 30    // CALL put_pixel
+2A A9 2E    // LHLD __VAR_draw_cube_edges_p2x
+E5          // PUSH H
+CD 7A 21    // CALL draw_line
 EB          // XCHG	; Save Return Value
-21 04 00    // LXI H, 4
+21 0A 00    // LXI H, 10
 39          // DAD SP
 F9          // SPHL
 EB          // XCHG	; Restore Return Value
-2A 03 33    // LHLD __VAR_draw_circle_points_yc
+2A BD 2E    // LHLD __VAR_draw_cube_edges_color
 E5          // PUSH H
-2A FF 32    // LHLD __VAR_draw_circle_points_y
-D1          // POP D
-7B          // MOV A, E
-95          // SUB L
-6F          // MOV L, A
-7A          // MOV A, D
-9C          // SBB H
-67          // MOV H, A
+2A AF 2E    // LHLD __VAR_draw_cube_edges_p0y
 E5          // PUSH H
-2A 05 33    // LHLD __VAR_draw_circle_points_xc
+2A B1 2E    // LHLD __VAR_draw_cube_edges_p0x
 E5          // PUSH H
-2A 01 33    // LHLD __VAR_draw_circle_points_x
-D1          // POP D
-19          // DAD D
+2A A3 2E    // LHLD __VAR_draw_cube_edges_p3y
 E5          // PUSH H
-CD 7F 30    // CALL put_pixel
+2A A5 2E    // LHLD __VAR_draw_cube_edges_p3x
+E5          // PUSH H
+CD 7A 21    // CALL draw_line
 EB          // XCHG	; Save Return Value
-21 04 00    // LXI H, 4
+21 0A 00    // LXI H, 10
 39          // DAD SP
 F9          // SPHL
 EB          // XCHG	; Restore Return Value
-2A 03 33    // LHLD __VAR_draw_circle_points_yc
+2A BD 2E    // LHLD __VAR_draw_cube_edges_color
 E5          // PUSH H
-2A FF 32    // LHLD __VAR_draw_circle_points_y
-D1          // POP D
-7B          // MOV A, E
-95          // SUB L
-6F          // MOV L, A
-7A          // MOV A, D
-9C          // SBB H
-67          // MOV H, A
+2A 9B 2E    // LHLD __VAR_draw_cube_edges_p5y
 E5          // PUSH H
-2A 05 33    // LHLD __VAR_draw_circle_points_xc
+2A 9D 2E    // LHLD __VAR_draw_cube_edges_p5x
 E5          // PUSH H
-2A 01 33    // LHLD __VAR_draw_circle_points_x
-D1          // POP D
-7B          // MOV A, E
-95          // SUB L
-6F          // MOV L, A
-7A          // MOV A, D
-9C          // SBB H
-67          // MOV H, A
+2A 9F 2E    // LHLD __VAR_draw_cube_edges_p4y
 E5          // PUSH H
-CD 7F 30    // CALL put_pixel
+2A A1 2E    // LHLD __VAR_draw_cube_edges_p4x
+E5          // PUSH H
+CD 7A 21    // CALL draw_line
 EB          // XCHG	; Save Return Value
-21 04 00    // LXI H, 4
+21 0A 00    // LXI H, 10
 39          // DAD SP
 F9          // SPHL
 EB          // XCHG	; Restore Return Value
-2A 03 33    // LHLD __VAR_draw_circle_points_yc
+2A BD 2E    // LHLD __VAR_draw_cube_edges_color
 E5          // PUSH H
-2A 01 33    // LHLD __VAR_draw_circle_points_x
-D1          // POP D
-19          // DAD D
+2A 97 2E    // LHLD __VAR_draw_cube_edges_p6y
 E5          // PUSH H
-2A 05 33    // LHLD __VAR_draw_circle_points_xc
+2A 99 2E    // LHLD __VAR_draw_cube_edges_p6x
 E5          // PUSH H
-2A FF 32    // LHLD __VAR_draw_circle_points_y
-D1          // POP D
-19          // DAD D
+2A 9B 2E    // LHLD __VAR_draw_cube_edges_p5y
 E5          // PUSH H
-CD 7F 30    // CALL put_pixel
+2A 9D 2E    // LHLD __VAR_draw_cube_edges_p5x
+E5          // PUSH H
+CD 7A 21    // CALL draw_line
 EB          // XCHG	; Save Return Value
-21 04 00    // LXI H, 4
+21 0A 00    // LXI H, 10
 39          // DAD SP
 F9          // SPHL
 EB          // XCHG	; Restore Return Value
-2A 03 33    // LHLD __VAR_draw_circle_points_yc
+2A BD 2E    // LHLD __VAR_draw_cube_edges_color
 E5          // PUSH H
-2A 01 33    // LHLD __VAR_draw_circle_points_x
-D1          // POP D
-19          // DAD D
+2A 93 2E    // LHLD __VAR_draw_cube_edges_p7y
 E5          // PUSH H
-2A 05 33    // LHLD __VAR_draw_circle_points_xc
+2A 95 2E    // LHLD __VAR_draw_cube_edges_p7x
 E5          // PUSH H
-2A FF 32    // LHLD __VAR_draw_circle_points_y
-D1          // POP D
-7B          // MOV A, E
-95          // SUB L
-6F          // MOV L, A
-7A          // MOV A, D
-9C          // SBB H
-67          // MOV H, A
+2A 97 2E    // LHLD __VAR_draw_cube_edges_p6y
 E5          // PUSH H
-CD 7F 30    // CALL put_pixel
+2A 99 2E    // LHLD __VAR_draw_cube_edges_p6x
+E5          // PUSH H
+CD 7A 21    // CALL draw_line
 EB          // XCHG	; Save Return Value
-21 04 00    // LXI H, 4
+21 0A 00    // LXI H, 10
 39          // DAD SP
 F9          // SPHL
 EB          // XCHG	; Restore Return Value
-2A 03 33    // LHLD __VAR_draw_circle_points_yc
+2A BD 2E    // LHLD __VAR_draw_cube_edges_color
 E5          // PUSH H
-2A 01 33    // LHLD __VAR_draw_circle_points_x
-D1          // POP D
-7B          // MOV A, E
-95          // SUB L
-6F          // MOV L, A
-7A          // MOV A, D
-9C          // SBB H
-67          // MOV H, A
+2A 9F 2E    // LHLD __VAR_draw_cube_edges_p4y
 E5          // PUSH H
-2A 05 33    // LHLD __VAR_draw_circle_points_xc
+2A A1 2E    // LHLD __VAR_draw_cube_edges_p4x
 E5          // PUSH H
-2A FF 32    // LHLD __VAR_draw_circle_points_y
-D1          // POP D
-19          // DAD D
+2A 93 2E    // LHLD __VAR_draw_cube_edges_p7y
 E5          // PUSH H
-CD 7F 30    // CALL put_pixel
+2A 95 2E    // LHLD __VAR_draw_cube_edges_p7x
+E5          // PUSH H
+CD 7A 21    // CALL draw_line
 EB          // XCHG	; Save Return Value
-21 04 00    // LXI H, 4
+21 0A 00    // LXI H, 10
 39          // DAD SP
 F9          // SPHL
 EB          // XCHG	; Restore Return Value
-2A 03 33    // LHLD __VAR_draw_circle_points_yc
+2A BD 2E    // LHLD __VAR_draw_cube_edges_color
 E5          // PUSH H
-2A 01 33    // LHLD __VAR_draw_circle_points_x
-D1          // POP D
-7B          // MOV A, E
-95          // SUB L
-6F          // MOV L, A
-7A          // MOV A, D
-9C          // SBB H
-67          // MOV H, A
+2A 9F 2E    // LHLD __VAR_draw_cube_edges_p4y
 E5          // PUSH H
-2A 05 33    // LHLD __VAR_draw_circle_points_xc
+2A A1 2E    // LHLD __VAR_draw_cube_edges_p4x
 E5          // PUSH H
-2A FF 32    // LHLD __VAR_draw_circle_points_y
-D1          // POP D
-7B          // MOV A, E
-95          // SUB L
-6F          // MOV L, A
-7A          // MOV A, D
-9C          // SBB H
-67          // MOV H, A
+2A AF 2E    // LHLD __VAR_draw_cube_edges_p0y
 E5          // PUSH H
-CD 7F 30    // CALL put_pixel
+2A B1 2E    // LHLD __VAR_draw_cube_edges_p0x
+E5          // PUSH H
+CD 7A 21    // CALL draw_line
 EB          // XCHG	; Save Return Value
-21 04 00    // LXI H, 4
+21 0A 00    // LXI H, 10
+39          // DAD SP
+F9          // SPHL
+EB          // XCHG	; Restore Return Value
+2A BD 2E    // LHLD __VAR_draw_cube_edges_color
+E5          // PUSH H
+2A 9B 2E    // LHLD __VAR_draw_cube_edges_p5y
+E5          // PUSH H
+2A 9D 2E    // LHLD __VAR_draw_cube_edges_p5x
+E5          // PUSH H
+2A AB 2E    // LHLD __VAR_draw_cube_edges_p1y
+E5          // PUSH H
+2A AD 2E    // LHLD __VAR_draw_cube_edges_p1x
+E5          // PUSH H
+CD 7A 21    // CALL draw_line
+EB          // XCHG	; Save Return Value
+21 0A 00    // LXI H, 10
+39          // DAD SP
+F9          // SPHL
+EB          // XCHG	; Restore Return Value
+2A BD 2E    // LHLD __VAR_draw_cube_edges_color
+E5          // PUSH H
+2A 97 2E    // LHLD __VAR_draw_cube_edges_p6y
+E5          // PUSH H
+2A 99 2E    // LHLD __VAR_draw_cube_edges_p6x
+E5          // PUSH H
+2A A7 2E    // LHLD __VAR_draw_cube_edges_p2y
+E5          // PUSH H
+2A A9 2E    // LHLD __VAR_draw_cube_edges_p2x
+E5          // PUSH H
+CD 7A 21    // CALL draw_line
+EB          // XCHG	; Save Return Value
+21 0A 00    // LXI H, 10
+39          // DAD SP
+F9          // SPHL
+EB          // XCHG	; Restore Return Value
+2A BD 2E    // LHLD __VAR_draw_cube_edges_color
+E5          // PUSH H
+2A 93 2E    // LHLD __VAR_draw_cube_edges_p7y
+E5          // PUSH H
+2A 95 2E    // LHLD __VAR_draw_cube_edges_p7x
+E5          // PUSH H
+2A A3 2E    // LHLD __VAR_draw_cube_edges_p3y
+E5          // PUSH H
+2A A5 2E    // LHLD __VAR_draw_cube_edges_p3x
+E5          // PUSH H
+CD 7A 21    // CALL draw_line
+EB          // XCHG	; Save Return Value
+21 0A 00    // LXI H, 10
 39          // DAD SP
 F9          // SPHL
 EB          // XCHG	; Restore Return Value
 21 00 00    // LXI H, 0
 EB          // XCHG	; Save return value
 E1          // POP H		; Shadow stack pop
-22 05 33    // SHLD __VAR_draw_circle_points_xc
+22 BD 2E    // SHLD __VAR_draw_cube_edges_color
 E1          // POP H		; Shadow stack pop
-22 03 33    // SHLD __VAR_draw_circle_points_yc
+22 BB 2E    // SHLD __VAR_draw_cube_edges_use_old
 E1          // POP H		; Shadow stack pop
-22 01 33    // SHLD __VAR_draw_circle_points_x
+22 B9 2E    // SHLD __VAR_draw_cube_edges_px
 E1          // POP H		; Shadow stack pop
-22 FF 32    // SHLD __VAR_draw_circle_points_y
+22 B7 2E    // SHLD __VAR_draw_cube_edges_py
+E1          // POP H		; Shadow stack pop
+22 B5 2E    // SHLD __VAR_draw_cube_edges_old_px
+E1          // POP H		; Shadow stack pop
+22 B3 2E    // SHLD __VAR_draw_cube_edges_old_py
+E1          // POP H		; Shadow stack pop
+22 B1 2E    // SHLD __VAR_draw_cube_edges_p0x
+E1          // POP H		; Shadow stack pop
+22 AF 2E    // SHLD __VAR_draw_cube_edges_p0y
+E1          // POP H		; Shadow stack pop
+22 AD 2E    // SHLD __VAR_draw_cube_edges_p1x
+E1          // POP H		; Shadow stack pop
+22 AB 2E    // SHLD __VAR_draw_cube_edges_p1y
+E1          // POP H		; Shadow stack pop
+22 A9 2E    // SHLD __VAR_draw_cube_edges_p2x
+E1          // POP H		; Shadow stack pop
+22 A7 2E    // SHLD __VAR_draw_cube_edges_p2y
+E1          // POP H		; Shadow stack pop
+22 A5 2E    // SHLD __VAR_draw_cube_edges_p3x
+E1          // POP H		; Shadow stack pop
+22 A3 2E    // SHLD __VAR_draw_cube_edges_p3y
+E1          // POP H		; Shadow stack pop
+22 A1 2E    // SHLD __VAR_draw_cube_edges_p4x
+E1          // POP H		; Shadow stack pop
+22 9F 2E    // SHLD __VAR_draw_cube_edges_p4y
+E1          // POP H		; Shadow stack pop
+22 9D 2E    // SHLD __VAR_draw_cube_edges_p5x
+E1          // POP H		; Shadow stack pop
+22 9B 2E    // SHLD __VAR_draw_cube_edges_p5y
+E1          // POP H		; Shadow stack pop
+22 99 2E    // SHLD __VAR_draw_cube_edges_p6x
+E1          // POP H		; Shadow stack pop
+22 97 2E    // SHLD __VAR_draw_cube_edges_p6y
+E1          // POP H		; Shadow stack pop
+22 95 2E    // SHLD __VAR_draw_cube_edges_p7x
+E1          // POP H		; Shadow stack pop
+22 93 2E    // SHLD __VAR_draw_cube_edges_p7y
 EB          // XCHG	; Restore return value
 C9          // RET
 21 00 00    // LXI H, 0
 EB          // XCHG
 E1          // POP H		; Shadow stack pop
-22 05 33    // SHLD __VAR_draw_circle_points_xc
+22 BD 2E    // SHLD __VAR_draw_cube_edges_color
 E1          // POP H		; Shadow stack pop
-22 03 33    // SHLD __VAR_draw_circle_points_yc
+22 BB 2E    // SHLD __VAR_draw_cube_edges_use_old
 E1          // POP H		; Shadow stack pop
-22 01 33    // SHLD __VAR_draw_circle_points_x
+22 B9 2E    // SHLD __VAR_draw_cube_edges_px
 E1          // POP H		; Shadow stack pop
-22 FF 32    // SHLD __VAR_draw_circle_points_y
+22 B7 2E    // SHLD __VAR_draw_cube_edges_py
+E1          // POP H		; Shadow stack pop
+22 B5 2E    // SHLD __VAR_draw_cube_edges_old_px
+E1          // POP H		; Shadow stack pop
+22 B3 2E    // SHLD __VAR_draw_cube_edges_old_py
+E1          // POP H		; Shadow stack pop
+22 B1 2E    // SHLD __VAR_draw_cube_edges_p0x
+E1          // POP H		; Shadow stack pop
+22 AF 2E    // SHLD __VAR_draw_cube_edges_p0y
+E1          // POP H		; Shadow stack pop
+22 AD 2E    // SHLD __VAR_draw_cube_edges_p1x
+E1          // POP H		; Shadow stack pop
+22 AB 2E    // SHLD __VAR_draw_cube_edges_p1y
+E1          // POP H		; Shadow stack pop
+22 A9 2E    // SHLD __VAR_draw_cube_edges_p2x
+E1          // POP H		; Shadow stack pop
+22 A7 2E    // SHLD __VAR_draw_cube_edges_p2y
+E1          // POP H		; Shadow stack pop
+22 A5 2E    // SHLD __VAR_draw_cube_edges_p3x
+E1          // POP H		; Shadow stack pop
+22 A3 2E    // SHLD __VAR_draw_cube_edges_p3y
+E1          // POP H		; Shadow stack pop
+22 A1 2E    // SHLD __VAR_draw_cube_edges_p4x
+E1          // POP H		; Shadow stack pop
+22 9F 2E    // SHLD __VAR_draw_cube_edges_p4y
+E1          // POP H		; Shadow stack pop
+22 9D 2E    // SHLD __VAR_draw_cube_edges_p5x
+E1          // POP H		; Shadow stack pop
+22 9B 2E    // SHLD __VAR_draw_cube_edges_p5y
+E1          // POP H		; Shadow stack pop
+22 99 2E    // SHLD __VAR_draw_cube_edges_p6x
+E1          // POP H		; Shadow stack pop
+22 97 2E    // SHLD __VAR_draw_cube_edges_p6y
+E1          // POP H		; Shadow stack pop
+22 95 2E    // SHLD __VAR_draw_cube_edges_p7x
+E1          // POP H		; Shadow stack pop
+22 93 2E    // SHLD __VAR_draw_cube_edges_p7y
 EB          // XCHG
 C9          // RET
 
-@3307       // Start at address 0x3307
-2A 7E 34    // LHLD __VAR_draw_circle_d	; Shadow stack push
+@2EBF       // Start at address 0x2EBF
+2A D4 33    // LHLD __VAR_main_key	; Shadow stack push
 E5          // PUSH H
-2A 80 34    // LHLD __VAR_draw_circle_y	; Shadow stack push
+2A D6 33    // LHLD __VAR_main_i	; Shadow stack push
 E5          // PUSH H
-2A 82 34    // LHLD __VAR_draw_circle_x	; Shadow stack push
+2A 18 34    // LHLD __VAR_main_last_dir	; Shadow stack push
 E5          // PUSH H
-2A 84 34    // LHLD __VAR_draw_circle_r	; Shadow stack push
+2A 1A 34    // LHLD __VAR_main_dir	; Shadow stack push
 E5          // PUSH H
-2A 86 34    // LHLD __VAR_draw_circle_yc	; Shadow stack push
+2A 1C 34    // LHLD __VAR_main_ay_step	; Shadow stack push
 E5          // PUSH H
-2A 88 34    // LHLD __VAR_draw_circle_xc	; Shadow stack push
+2A 1E 34    // LHLD __VAR_main_ax_step	; Shadow stack push
 E5          // PUSH H
-21 0E 00    // LXI H, 14
-39          // DAD SP
-5E          // MOV E, M
-23          // INX H
-56          // MOV D, M
-EB          // XCHG
-22 88 34    // SHLD __VAR_draw_circle_xc
-21 10 00    // LXI H, 16
-39          // DAD SP
-5E          // MOV E, M
-23          // INX H
-56          // MOV D, M
-EB          // XCHG
-22 86 34    // SHLD __VAR_draw_circle_yc
-21 12 00    // LXI H, 18
-39          // DAD SP
-5E          // MOV E, M
-23          // INX H
-56          // MOV D, M
-EB          // XCHG
-22 84 34    // SHLD __VAR_draw_circle_r
+2A 20 34    // LHLD __VAR_main_ay	; Shadow stack push
+E5          // PUSH H
+2A 22 34    // LHLD __VAR_main_ax	; Shadow stack push
+E5          // PUSH H
 21 00 00    // LXI H, 0
-22 82 34    // SHLD __VAR_draw_circle_x
-2A 84 34    // LHLD __VAR_draw_circle_r
-22 80 34    // SHLD __VAR_draw_circle_y
+22 22 34    // SHLD __VAR_main_ax
+21 00 00    // LXI H, 0
+22 20 34    // SHLD __VAR_main_ay
+21 01 00    // LXI H, 1
+22 1E 34    // SHLD __VAR_main_ax_step
+21 02 00    // LXI H, 2
+22 1C 34    // SHLD __VAR_main_ay_step
+21 04 00    // LXI H, 4
+22 1A 34    // SHLD __VAR_main_dir
+21 01 00    // LXI H, 1
+7C          // MOV A, H
+2F          // CMA
+67          // MOV H, A
+7D          // MOV A, L
+2F          // CMA
+6F          // MOV L, A
+23          // INX H
+22 18 34    // SHLD __VAR_main_last_dir
+21 00 00    // LXI H, 0
+E5          // PUSH H
+CD 07 21    // CALL clear_screen
+EB          // XCHG	; Save Return Value
+E1          // POP H	; Discard argument
+EB          // XCHG	; Restore Return Value
+C3 1D 2F    // JMP L58
+44 49 52 3A 20 00 // DB 68,73,82,58,32,0
+21 17 2F    // LXI H, L57
+E5          // PUSH H
 21 01 00    // LXI H, 1
 E5          // PUSH H
-2A 84 34    // LHLD __VAR_draw_circle_r
+21 01 00    // LXI H, 1
+E5          // PUSH H
+CD F1 21    // CALL puts_at
+EB          // XCHG	; Save Return Value
+E1          // POP H	; Discard argument
+E1          // POP H	; Discard argument
+E1          // POP H	; Discard argument
+EB          // XCHG	; Restore Return Value
+21 00 00    // LXI H, 0
+22 D6 33    // SHLD __VAR_main_i
+2A D6 33    // LHLD __VAR_main_i
+E5          // PUSH H
+21 08 00    // LXI H, 8
 D1          // POP D
 7B          // MOV A, E
 95          // SUB L
-6F          // MOV L, A
 7A          // MOV A, D
 9C          // SBB H
+FA 4C 2F    // JM L62
+21 00 00    // LXI H, 0
+C3 4F 2F    // JMP L63
+21 01 00    // LXI H, 1
+7C          // MOV A, H
+B5          // ORA L
+CA 89 2F    // JZ L60
+21 00 00    // LXI H, 0
+E5          // PUSH H
+2A D6 33    // LHLD __VAR_main_i
+29          // DAD H
+E5          // PUSH H
+21 E8 33    // LXI H, __VAR_main_old_px
+D1          // POP D
+19          // DAD D
+D1          // POP D
+73          // MOV M, E
+23          // INX H
+72          // MOV M, D
+EB          // XCHG
+21 00 00    // LXI H, 0
+E5          // PUSH H
+2A D6 33    // LHLD __VAR_main_i
+29          // DAD H
+E5          // PUSH H
+21 D8 33    // LXI H, __VAR_main_old_py
+D1          // POP D
+19          // DAD D
+D1          // POP D
+73          // MOV M, E
+23          // INX H
+72          // MOV M, D
+EB          // XCHG
+2A D6 33    // LHLD __VAR_main_i
+E5          // PUSH H
+21 01 00    // LXI H, 1
+D1          // POP D
+19          // DAD D
+22 D6 33    // SHLD __VAR_main_i
+C3 37 2F    // JMP L59
+21 01 00    // LXI H, 1
+7C          // MOV A, H
+B5          // ORA L
+CA 88 33    // JZ L65
+CD 71 21    // CALL check_key
+22 D4 33    // SHLD __VAR_main_key
+2A D4 33    // LHLD __VAR_main_key
+E5          // PUSH H
+21 1D 00    // LXI H, 29
+D1          // POP D
+7B          // MOV A, E
+BD          // CMP L
+C2 AF 2F    // JNZ L68
+7A          // MOV A, D
+BC          // CMP H
+C2 AF 2F    // JNZ L68
+21 01 00    // LXI H, 1
+C3 B2 2F    // JMP L69
+21 00 00    // LXI H, 0
+E5          // PUSH H
+2A D4 33    // LHLD __VAR_main_key
+E5          // PUSH H
+21 75 00    // LXI H, 117
+D1          // POP D
+7B          // MOV A, E
+BD          // CMP L
+C2 CB 2F    // JNZ L70
+7A          // MOV A, D
+BC          // CMP H
+C2 CB 2F    // JNZ L70
+21 01 00    // LXI H, 1
+C3 CE 2F    // JMP L71
+21 00 00    // LXI H, 0
+D1          // POP D
+7A          // MOV A, D
+B3          // ORA E
+C2 DF 2F    // JNZ L72
+7C          // MOV A, H
+B5          // ORA L
+C2 DF 2F    // JNZ L72
+21 00 00    // LXI H, 0
+C3 E2 2F    // JMP L73
+21 01 00    // LXI H, 1
+7C          // MOV A, H
+B5          // ORA L
+CA FC 2F    // JZ L66
+21 02 00    // LXI H, 2
+22 1E 34    // SHLD __VAR_main_ax_step
+21 00 00    // LXI H, 0
+22 1C 34    // SHLD __VAR_main_ay_step
+21 00 00    // LXI H, 0
+22 1A 34    // SHLD __VAR_main_dir
+C3 FC 2F    // JMP L67
+2A D4 33    // LHLD __VAR_main_key
+E5          // PUSH H
+21 1B 00    // LXI H, 27
+D1          // POP D
+7B          // MOV A, E
+BD          // CMP L
+C2 14 30    // JNZ L76
+7A          // MOV A, D
+BC          // CMP H
+C2 14 30    // JNZ L76
+21 01 00    // LXI H, 1
+C3 17 30    // JMP L77
+21 00 00    // LXI H, 0
+E5          // PUSH H
+2A D4 33    // LHLD __VAR_main_key
+E5          // PUSH H
+21 72 00    // LXI H, 114
+D1          // POP D
+7B          // MOV A, E
+BD          // CMP L
+C2 30 30    // JNZ L78
+7A          // MOV A, D
+BC          // CMP H
+C2 30 30    // JNZ L78
+21 01 00    // LXI H, 1
+C3 33 30    // JMP L79
+21 00 00    // LXI H, 0
+D1          // POP D
+7A          // MOV A, D
+B3          // ORA E
+C2 44 30    // JNZ L80
+7C          // MOV A, H
+B5          // ORA L
+C2 44 30    // JNZ L80
+21 00 00    // LXI H, 0
+C3 47 30    // JMP L81
+21 01 00    // LXI H, 1
+7C          // MOV A, H
+B5          // ORA L
+CA 68 30    // JZ L74
+21 02 00    // LXI H, 2
+7C          // MOV A, H
+2F          // CMA
 67          // MOV H, A
-22 7E 34    // SHLD __VAR_draw_circle_d
-2A 80 34    // LHLD __VAR_draw_circle_y
+7D          // MOV A, L
+2F          // CMA
+6F          // MOV L, A
+23          // INX H
+22 1E 34    // SHLD __VAR_main_ax_step
+21 00 00    // LXI H, 0
+22 1C 34    // SHLD __VAR_main_ay_step
+21 01 00    // LXI H, 1
+22 1A 34    // SHLD __VAR_main_dir
+C3 68 30    // JMP L75
+2A D4 33    // LHLD __VAR_main_key
 E5          // PUSH H
-2A 82 34    // LHLD __VAR_draw_circle_x
+21 23 00    // LXI H, 35
+D1          // POP D
+7B          // MOV A, E
+BD          // CMP L
+C2 80 30    // JNZ L84
+7A          // MOV A, D
+BC          // CMP H
+C2 80 30    // JNZ L84
+21 01 00    // LXI H, 1
+C3 83 30    // JMP L85
+21 00 00    // LXI H, 0
 E5          // PUSH H
-2A 86 34    // LHLD __VAR_draw_circle_yc
+2A D4 33    // LHLD __VAR_main_key
 E5          // PUSH H
-2A 88 34    // LHLD __VAR_draw_circle_xc
+21 74 00    // LXI H, 116
+D1          // POP D
+7B          // MOV A, E
+BD          // CMP L
+C2 9C 30    // JNZ L86
+7A          // MOV A, D
+BC          // CMP H
+C2 9C 30    // JNZ L86
+21 01 00    // LXI H, 1
+C3 9F 30    // JMP L87
+21 00 00    // LXI H, 0
+D1          // POP D
+7A          // MOV A, D
+B3          // ORA E
+C2 B0 30    // JNZ L88
+7C          // MOV A, H
+B5          // ORA L
+C2 B0 30    // JNZ L88
+21 00 00    // LXI H, 0
+C3 B3 30    // JMP L89
+21 01 00    // LXI H, 1
+7C          // MOV A, H
+B5          // ORA L
+CA CD 30    // JZ L82
+21 00 00    // LXI H, 0
+22 1E 34    // SHLD __VAR_main_ax_step
+21 02 00    // LXI H, 2
+22 1C 34    // SHLD __VAR_main_ay_step
+21 02 00    // LXI H, 2
+22 1A 34    // SHLD __VAR_main_dir
+C3 CD 30    // JMP L83
+2A D4 33    // LHLD __VAR_main_key
 E5          // PUSH H
-CD 7F 31    // CALL draw_circle_points
+21 1C 00    // LXI H, 28
+D1          // POP D
+7B          // MOV A, E
+BD          // CMP L
+C2 E5 30    // JNZ L92
+7A          // MOV A, D
+BC          // CMP H
+C2 E5 30    // JNZ L92
+21 01 00    // LXI H, 1
+C3 E8 30    // JMP L93
+21 00 00    // LXI H, 0
+E5          // PUSH H
+2A D4 33    // LHLD __VAR_main_key
+E5          // PUSH H
+21 6B 00    // LXI H, 107
+D1          // POP D
+7B          // MOV A, E
+BD          // CMP L
+C2 01 31    // JNZ L94
+7A          // MOV A, D
+BC          // CMP H
+C2 01 31    // JNZ L94
+21 01 00    // LXI H, 1
+C3 04 31    // JMP L95
+21 00 00    // LXI H, 0
+D1          // POP D
+7A          // MOV A, D
+B3          // ORA E
+C2 15 31    // JNZ L96
+7C          // MOV A, H
+B5          // ORA L
+C2 15 31    // JNZ L96
+21 00 00    // LXI H, 0
+C3 18 31    // JMP L97
+21 01 00    // LXI H, 1
+7C          // MOV A, H
+B5          // ORA L
+CA 39 31    // JZ L90
+21 00 00    // LXI H, 0
+22 1E 34    // SHLD __VAR_main_ax_step
+21 02 00    // LXI H, 2
+7C          // MOV A, H
+2F          // CMA
+67          // MOV H, A
+7D          // MOV A, L
+2F          // CMA
+6F          // MOV L, A
+23          // INX H
+22 1C 34    // SHLD __VAR_main_ay_step
+21 03 00    // LXI H, 3
+22 1A 34    // SHLD __VAR_main_dir
+C3 39 31    // JMP L91
+2A 1A 34    // LHLD __VAR_main_dir
+E5          // PUSH H
+2A 18 34    // LHLD __VAR_main_last_dir
+D1          // POP D
+7B          // MOV A, E
+BD          // CMP L
+C2 4B 31    // JNZ L100
+7A          // MOV A, D
+BC          // CMP H
+CA 51 31    // JZ L101
+21 01 00    // LXI H, 1
+C3 54 31    // JMP L102
+21 00 00    // LXI H, 0
+7C          // MOV A, H
+B5          // ORA L
+CA 6C 31    // JZ L98
+2A 1A 34    // LHLD __VAR_main_dir
+E5          // PUSH H
+CD C3 24    // CALL update_dir_text
 EB          // XCHG	; Save Return Value
-21 08 00    // LXI H, 8
+E1          // POP H	; Discard argument
+EB          // XCHG	; Restore Return Value
+2A 1A 34    // LHLD __VAR_main_dir
+22 18 34    // SHLD __VAR_main_last_dir
+C3 6C 31    // JMP L99
+21 F8 33    // LXI H, __VAR_main_py
+E5          // PUSH H
+21 08 34    // LXI H, __VAR_main_px
+E5          // PUSH H
+2A 20 34    // LHLD __VAR_main_ay
+E5          // PUSH H
+2A 22 34    // LHLD __VAR_main_ax
+E5          // PUSH H
+21 1E 00    // LXI H, 30
+7C          // MOV A, H
+2F          // CMA
+67          // MOV H, A
+7D          // MOV A, L
+2F          // CMA
+6F          // MOV L, A
+23          // INX H
+E5          // PUSH H
+21 1E 00    // LXI H, 30
+7C          // MOV A, H
+2F          // CMA
+67          // MOV H, A
+7D          // MOV A, L
+2F          // CMA
+6F          // MOV L, A
+23          // INX H
+E5          // PUSH H
+21 1E 00    // LXI H, 30
+7C          // MOV A, H
+2F          // CMA
+67          // MOV H, A
+7D          // MOV A, L
+2F          // CMA
+6F          // MOV L, A
+23          // INX H
+E5          // PUSH H
+21 00 00    // LXI H, 0
+E5          // PUSH H
+CD 14 27    // CALL project_vertex
+EB          // XCHG	; Save Return Value
+21 10 00    // LXI H, 16
 39          // DAD SP
 F9          // SPHL
 EB          // XCHG	; Restore Return Value
-2A 80 34    // LHLD __VAR_draw_circle_y
+21 F8 33    // LXI H, __VAR_main_py
 E5          // PUSH H
-2A 82 34    // LHLD __VAR_draw_circle_x
-D1          // POP D
-7B          // MOV A, E
-95          // SUB L
-7A          // MOV A, D
-9C          // SBB H
-FA 8C 33    // JM L15
-21 00 00    // LXI H, 0
-C3 8F 33    // JMP L16
-21 01 00    // LXI H, 1
+21 08 34    // LXI H, __VAR_main_px
+E5          // PUSH H
+2A 20 34    // LHLD __VAR_main_ay
+E5          // PUSH H
+2A 22 34    // LHLD __VAR_main_ax
+E5          // PUSH H
+21 1E 00    // LXI H, 30
 7C          // MOV A, H
-B5          // ORA L
-C2 9A 33    // JNZ L17
-21 01 00    // LXI H, 1
-C3 9D 33    // JMP L18
-21 00 00    // LXI H, 0
+2F          // CMA
+67          // MOV H, A
+7D          // MOV A, L
+2F          // CMA
+6F          // MOV L, A
+23          // INX H
+E5          // PUSH H
+21 1E 00    // LXI H, 30
 7C          // MOV A, H
-B5          // ORA L
-CA 42 34    // JZ L14
-2A 82 34    // LHLD __VAR_draw_circle_x
+2F          // CMA
+67          // MOV H, A
+7D          // MOV A, L
+2F          // CMA
+6F          // MOV L, A
+23          // INX H
+E5          // PUSH H
+21 1E 00    // LXI H, 30
 E5          // PUSH H
 21 01 00    // LXI H, 1
-D1          // POP D
-19          // DAD D
-22 82 34    // SHLD __VAR_draw_circle_x
-21 00 00    // LXI H, 0
 E5          // PUSH H
-2A 7E 34    // LHLD __VAR_draw_circle_d
-D1          // POP D
-7B          // MOV A, E
-95          // SUB L
-7A          // MOV A, D
-9C          // SBB H
-FA C3 33    // JM L21
-21 00 00    // LXI H, 0
-C3 C6 33    // JMP L22
-21 01 00    // LXI H, 1
+CD 14 27    // CALL project_vertex
+EB          // XCHG	; Save Return Value
+21 10 00    // LXI H, 16
+39          // DAD SP
+F9          // SPHL
+EB          // XCHG	; Restore Return Value
+21 F8 33    // LXI H, __VAR_main_py
+E5          // PUSH H
+21 08 34    // LXI H, __VAR_main_px
+E5          // PUSH H
+2A 20 34    // LHLD __VAR_main_ay
+E5          // PUSH H
+2A 22 34    // LHLD __VAR_main_ax
+E5          // PUSH H
+21 1E 00    // LXI H, 30
 7C          // MOV A, H
-B5          // ORA L
-CA 0D 34    // JZ L19
-2A 80 34    // LHLD __VAR_draw_circle_y
-E5          // PUSH H
-21 01 00    // LXI H, 1
-D1          // POP D
-7B          // MOV A, E
-95          // SUB L
-6F          // MOV L, A
-7A          // MOV A, D
-9C          // SBB H
+2F          // CMA
 67          // MOV H, A
-22 80 34    // SHLD __VAR_draw_circle_y
-2A 7E 34    // LHLD __VAR_draw_circle_d
-E5          // PUSH H
-2A 82 34    // LHLD __VAR_draw_circle_x
-D1          // POP D
-19          // DAD D
-E5          // PUSH H
-2A 80 34    // LHLD __VAR_draw_circle_y
-D1          // POP D
-7B          // MOV A, E
-95          // SUB L
+7D          // MOV A, L
+2F          // CMA
 6F          // MOV L, A
-7A          // MOV A, D
-9C          // SBB H
+23          // INX H
+E5          // PUSH H
+21 1E 00    // LXI H, 30
+E5          // PUSH H
+21 1E 00    // LXI H, 30
+E5          // PUSH H
+21 02 00    // LXI H, 2
+E5          // PUSH H
+CD 14 27    // CALL project_vertex
+EB          // XCHG	; Save Return Value
+21 10 00    // LXI H, 16
+39          // DAD SP
+F9          // SPHL
+EB          // XCHG	; Restore Return Value
+21 F8 33    // LXI H, __VAR_main_py
+E5          // PUSH H
+21 08 34    // LXI H, __VAR_main_px
+E5          // PUSH H
+2A 20 34    // LHLD __VAR_main_ay
+E5          // PUSH H
+2A 22 34    // LHLD __VAR_main_ax
+E5          // PUSH H
+21 1E 00    // LXI H, 30
+7C          // MOV A, H
+2F          // CMA
 67          // MOV H, A
-E5          // PUSH H
-2A 82 34    // LHLD __VAR_draw_circle_x
-D1          // POP D
-19          // DAD D
-E5          // PUSH H
-2A 80 34    // LHLD __VAR_draw_circle_y
-D1          // POP D
-7B          // MOV A, E
-95          // SUB L
+7D          // MOV A, L
+2F          // CMA
 6F          // MOV L, A
-7A          // MOV A, D
-9C          // SBB H
+23          // INX H
+E5          // PUSH H
+21 1E 00    // LXI H, 30
+E5          // PUSH H
+21 1E 00    // LXI H, 30
+7C          // MOV A, H
+2F          // CMA
 67          // MOV H, A
-E5          // PUSH H
-21 05 00    // LXI H, 5
-D1          // POP D
-19          // DAD D
-22 7E 34    // SHLD __VAR_draw_circle_d
-C3 25 34    // JMP L20
-2A 7E 34    // LHLD __VAR_draw_circle_d
-E5          // PUSH H
-2A 82 34    // LHLD __VAR_draw_circle_x
-D1          // POP D
-19          // DAD D
-E5          // PUSH H
-2A 82 34    // LHLD __VAR_draw_circle_x
-D1          // POP D
-19          // DAD D
+7D          // MOV A, L
+2F          // CMA
+6F          // MOV L, A
+23          // INX H
 E5          // PUSH H
 21 03 00    // LXI H, 3
-D1          // POP D
-19          // DAD D
-22 7E 34    // SHLD __VAR_draw_circle_d
-2A 80 34    // LHLD __VAR_draw_circle_y
 E5          // PUSH H
-2A 82 34    // LHLD __VAR_draw_circle_x
-E5          // PUSH H
-2A 86 34    // LHLD __VAR_draw_circle_yc
-E5          // PUSH H
-2A 88 34    // LHLD __VAR_draw_circle_xc
-E5          // PUSH H
-CD 7F 31    // CALL draw_circle_points
+CD 14 27    // CALL project_vertex
 EB          // XCHG	; Save Return Value
-21 08 00    // LXI H, 8
+21 10 00    // LXI H, 16
 39          // DAD SP
 F9          // SPHL
 EB          // XCHG	; Restore Return Value
-C3 77 33    // JMP L13
+21 F8 33    // LXI H, __VAR_main_py
+E5          // PUSH H
+21 08 34    // LXI H, __VAR_main_px
+E5          // PUSH H
+2A 20 34    // LHLD __VAR_main_ay
+E5          // PUSH H
+2A 22 34    // LHLD __VAR_main_ax
+E5          // PUSH H
+21 1E 00    // LXI H, 30
+E5          // PUSH H
+21 1E 00    // LXI H, 30
+7C          // MOV A, H
+2F          // CMA
+67          // MOV H, A
+7D          // MOV A, L
+2F          // CMA
+6F          // MOV L, A
+23          // INX H
+E5          // PUSH H
+21 1E 00    // LXI H, 30
+7C          // MOV A, H
+2F          // CMA
+67          // MOV H, A
+7D          // MOV A, L
+2F          // CMA
+6F          // MOV L, A
+23          // INX H
+E5          // PUSH H
+21 04 00    // LXI H, 4
+E5          // PUSH H
+CD 14 27    // CALL project_vertex
+EB          // XCHG	; Save Return Value
+21 10 00    // LXI H, 16
+39          // DAD SP
+F9          // SPHL
+EB          // XCHG	; Restore Return Value
+21 F8 33    // LXI H, __VAR_main_py
+E5          // PUSH H
+21 08 34    // LXI H, __VAR_main_px
+E5          // PUSH H
+2A 20 34    // LHLD __VAR_main_ay
+E5          // PUSH H
+2A 22 34    // LHLD __VAR_main_ax
+E5          // PUSH H
+21 1E 00    // LXI H, 30
+E5          // PUSH H
+21 1E 00    // LXI H, 30
+7C          // MOV A, H
+2F          // CMA
+67          // MOV H, A
+7D          // MOV A, L
+2F          // CMA
+6F          // MOV L, A
+23          // INX H
+E5          // PUSH H
+21 1E 00    // LXI H, 30
+E5          // PUSH H
+21 05 00    // LXI H, 5
+E5          // PUSH H
+CD 14 27    // CALL project_vertex
+EB          // XCHG	; Save Return Value
+21 10 00    // LXI H, 16
+39          // DAD SP
+F9          // SPHL
+EB          // XCHG	; Restore Return Value
+21 F8 33    // LXI H, __VAR_main_py
+E5          // PUSH H
+21 08 34    // LXI H, __VAR_main_px
+E5          // PUSH H
+2A 20 34    // LHLD __VAR_main_ay
+E5          // PUSH H
+2A 22 34    // LHLD __VAR_main_ax
+E5          // PUSH H
+21 1E 00    // LXI H, 30
+E5          // PUSH H
+21 1E 00    // LXI H, 30
+E5          // PUSH H
+21 1E 00    // LXI H, 30
+E5          // PUSH H
+21 06 00    // LXI H, 6
+E5          // PUSH H
+CD 14 27    // CALL project_vertex
+EB          // XCHG	; Save Return Value
+21 10 00    // LXI H, 16
+39          // DAD SP
+F9          // SPHL
+EB          // XCHG	; Restore Return Value
+21 F8 33    // LXI H, __VAR_main_py
+E5          // PUSH H
+21 08 34    // LXI H, __VAR_main_px
+E5          // PUSH H
+2A 20 34    // LHLD __VAR_main_ay
+E5          // PUSH H
+2A 22 34    // LHLD __VAR_main_ax
+E5          // PUSH H
+21 1E 00    // LXI H, 30
+E5          // PUSH H
+21 1E 00    // LXI H, 30
+E5          // PUSH H
+21 1E 00    // LXI H, 30
+7C          // MOV A, H
+2F          // CMA
+67          // MOV H, A
+7D          // MOV A, L
+2F          // CMA
+6F          // MOV L, A
+23          // INX H
+E5          // PUSH H
+21 07 00    // LXI H, 7
+E5          // PUSH H
+CD 14 27    // CALL project_vertex
+EB          // XCHG	; Save Return Value
+21 10 00    // LXI H, 16
+39          // DAD SP
+F9          // SPHL
+EB          // XCHG	; Restore Return Value
+21 D8 33    // LXI H, __VAR_main_old_py
+E5          // PUSH H
+21 E8 33    // LXI H, __VAR_main_old_px
+E5          // PUSH H
+21 F8 33    // LXI H, __VAR_main_py
+E5          // PUSH H
+21 08 34    // LXI H, __VAR_main_px
+E5          // PUSH H
+21 01 00    // LXI H, 1
+E5          // PUSH H
+21 00 00    // LXI H, 0
+E5          // PUSH H
+CD AA 29    // CALL draw_cube_edges
+EB          // XCHG	; Save Return Value
+21 0C 00    // LXI H, 12
+39          // DAD SP
+F9          // SPHL
+EB          // XCHG	; Restore Return Value
+21 D8 33    // LXI H, __VAR_main_old_py
+E5          // PUSH H
+21 E8 33    // LXI H, __VAR_main_old_px
+E5          // PUSH H
+21 F8 33    // LXI H, __VAR_main_py
+E5          // PUSH H
+21 08 34    // LXI H, __VAR_main_px
+E5          // PUSH H
+21 00 00    // LXI H, 0
+E5          // PUSH H
+21 01 00    // LXI H, 1
+E5          // PUSH H
+CD AA 29    // CALL draw_cube_edges
+EB          // XCHG	; Save Return Value
+21 0C 00    // LXI H, 12
+39          // DAD SP
+F9          // SPHL
+EB          // XCHG	; Restore Return Value
+21 D8 33    // LXI H, __VAR_main_old_py
+E5          // PUSH H
+21 E8 33    // LXI H, __VAR_main_old_px
+E5          // PUSH H
+21 F8 33    // LXI H, __VAR_main_py
+E5          // PUSH H
+21 08 34    // LXI H, __VAR_main_px
+E5          // PUSH H
+CD 28 26    // CALL save_old_coordinates
+EB          // XCHG	; Save Return Value
+E1          // POP H	; Discard argument
+E1          // POP H	; Discard argument
+E1          // POP H	; Discard argument
+E1          // POP H	; Discard argument
+EB          // XCHG	; Restore Return Value
+2A 22 34    // LHLD __VAR_main_ax
+E5          // PUSH H
+2A 1E 34    // LHLD __VAR_main_ax_step
+D1          // POP D
+19          // DAD D
+22 22 34    // SHLD __VAR_main_ax
+2A 20 34    // LHLD __VAR_main_ay
+E5          // PUSH H
+2A 1C 34    // LHLD __VAR_main_ay_step
+D1          // POP D
+19          // DAD D
+22 20 34    // SHLD __VAR_main_ay
+C3 89 2F    // JMP L64
 21 00 00    // LXI H, 0
 EB          // XCHG	; Save return value
 E1          // POP H		; Shadow stack pop
-22 88 34    // SHLD __VAR_draw_circle_xc
+22 22 34    // SHLD __VAR_main_ax
 E1          // POP H		; Shadow stack pop
-22 86 34    // SHLD __VAR_draw_circle_yc
+22 20 34    // SHLD __VAR_main_ay
 E1          // POP H		; Shadow stack pop
-22 84 34    // SHLD __VAR_draw_circle_r
+22 1E 34    // SHLD __VAR_main_ax_step
 E1          // POP H		; Shadow stack pop
-22 82 34    // SHLD __VAR_draw_circle_x
+22 1C 34    // SHLD __VAR_main_ay_step
 E1          // POP H		; Shadow stack pop
-22 80 34    // SHLD __VAR_draw_circle_y
+22 1A 34    // SHLD __VAR_main_dir
 E1          // POP H		; Shadow stack pop
-22 7E 34    // SHLD __VAR_draw_circle_d
+22 18 34    // SHLD __VAR_main_last_dir
+E1          // POP H		; Shadow stack pop
+22 D6 33    // SHLD __VAR_main_i
+E1          // POP H		; Shadow stack pop
+22 D4 33    // SHLD __VAR_main_key
 EB          // XCHG	; Restore return value
 C9          // RET
 21 00 00    // LXI H, 0
 EB          // XCHG
 E1          // POP H		; Shadow stack pop
-22 88 34    // SHLD __VAR_draw_circle_xc
+22 22 34    // SHLD __VAR_main_ax
 E1          // POP H		; Shadow stack pop
-22 86 34    // SHLD __VAR_draw_circle_yc
+22 20 34    // SHLD __VAR_main_ay
 E1          // POP H		; Shadow stack pop
-22 84 34    // SHLD __VAR_draw_circle_r
+22 1E 34    // SHLD __VAR_main_ax_step
 E1          // POP H		; Shadow stack pop
-22 82 34    // SHLD __VAR_draw_circle_x
+22 1C 34    // SHLD __VAR_main_ay_step
 E1          // POP H		; Shadow stack pop
-22 80 34    // SHLD __VAR_draw_circle_y
+22 1A 34    // SHLD __VAR_main_dir
 E1          // POP H		; Shadow stack pop
-22 7E 34    // SHLD __VAR_draw_circle_d
+22 18 34    // SHLD __VAR_main_last_dir
+E1          // POP H		; Shadow stack pop
+22 D6 33    // SHLD __VAR_main_i
+E1          // POP H		; Shadow stack pop
+22 D4 33    // SHLD __VAR_main_key
 EB          // XCHG
 C9          // RET
 
-@348A       // Start at address 0x348A
-2A 3A 35    // LHLD __VAR_main_i	; Shadow stack push
-E5          // PUSH H
-2A 3C 35    // LHLD __VAR_main_r	; Shadow stack push
-E5          // PUSH H
-2A 3E 35    // LHLD __VAR_main_yc	; Shadow stack push
-E5          // PUSH H
-2A 40 35    // LHLD __VAR_main_xc	; Shadow stack push
-E5          // PUSH H
-21 A0 00    // LXI H, 160
-22 40 35    // SHLD __VAR_main_xc
-21 78 00    // LXI H, 120
-22 3E 35    // SHLD __VAR_main_yc
-21 14 00    // LXI H, 20
-22 3C 35    // SHLD __VAR_main_r
-CD 07 30    // CALL clear_gfx_ram
+@3424       // Start at address 0x3424
+44          // MOV B, H
+4D          // MOV C, L
 21 00 00    // LXI H, 0
-22 3A 35    // SHLD __VAR_main_i
-2A 3A 35    // LHLD __VAR_main_i
-E5          // PUSH H
-21 0A 00    // LXI H, 10
-D1          // POP D
-7B          // MOV A, E
-95          // SUB L
-7A          // MOV A, D
-9C          // SBB H
-FA CA 34    // JM L26
-21 00 00    // LXI H, 0
-C3 CD 34    // JMP L27
-21 01 00    // LXI H, 1
-7C          // MOV A, H
-B5          // ORA L
-CA 03 35    // JZ L24
-2A 3C 35    // LHLD __VAR_main_r
-E5          // PUSH H
-2A 3E 35    // LHLD __VAR_main_yc
-E5          // PUSH H
-2A 40 35    // LHLD __VAR_main_xc
-E5          // PUSH H
-CD 07 33    // CALL draw_circle
-EB          // XCHG	; Save Return Value
-21 06 00    // LXI H, 6
-39          // DAD SP
-F9          // SPHL
-EB          // XCHG	; Restore Return Value
-2A 3C 35    // LHLD __VAR_main_r
-E5          // PUSH H
-21 05 00    // LXI H, 5
-D1          // POP D
+3E 10       // MVI A, 16
+29          // DAD H
+F5          // PUSH PSW
+79          // MOV A, C
+17          // RAL
+4F          // MOV C, A
+78          // MOV A, B
+17          // RAL
+47          // MOV B, A
+D2 37 34    // JNC __mul_skip
 19          // DAD D
-22 3C 35    // SHLD __VAR_main_r
-2A 3A 35    // LHLD __VAR_main_i
-E5          // PUSH H
-21 01 00    // LXI H, 1
-D1          // POP D
-19          // DAD D
-22 3A 35    // SHLD __VAR_main_i
-C3 B5 34    // JMP L23
-21 01 00    // LXI H, 1
-7C          // MOV A, H
-B5          // ORA L
-CA 0E 35    // JZ L29
-C3 03 35    // JMP L28
-21 00 00    // LXI H, 0
-EB          // XCHG	; Save return value
-E1          // POP H		; Shadow stack pop
-22 40 35    // SHLD __VAR_main_xc
-E1          // POP H		; Shadow stack pop
-22 3E 35    // SHLD __VAR_main_yc
-E1          // POP H		; Shadow stack pop
-22 3C 35    // SHLD __VAR_main_r
-E1          // POP H		; Shadow stack pop
-22 3A 35    // SHLD __VAR_main_i
-EB          // XCHG	; Restore return value
+F1          // POP PSW
+3D          // DCR A
+C2 2B 34    // JNZ __mul_loop
 C9          // RET
+44          // MOV B, H
+4D          // MOV C, L
 21 00 00    // LXI H, 0
-EB          // XCHG
-E1          // POP H		; Shadow stack pop
-22 40 35    // SHLD __VAR_main_xc
-E1          // POP H		; Shadow stack pop
-22 3E 35    // SHLD __VAR_main_yc
-E1          // POP H		; Shadow stack pop
-22 3C 35    // SHLD __VAR_main_r
-E1          // POP H		; Shadow stack pop
-22 3A 35    // SHLD __VAR_main_i
-EB          // XCHG
+7B          // MOV A, E
+91          // SUB C
+5F          // MOV E, A
+7A          // MOV A, D
+98          // SBB B
+57          // MOV D, A
+DA 4F 34    // JC __div_end
+23          // INX H
+C3 42 34    // JMP __div_loop
 C9          // RET

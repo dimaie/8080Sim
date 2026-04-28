@@ -175,6 +175,10 @@ class CPU8080:
                 d, e = cls._state['d'], cls._state['e']
                 cls._state['h'], cls._state['l'] = d, e
                 cls._state['d'], cls._state['e'] = h, l
+            elif op == 0xED: # MUL B
+                res = cls._state['a'] * cls._state['b']
+                cls._state['h'] = (res >> 8) & 0xFF
+                cls._state['l'] = res & 0xFF
             elif op == 0xE9: # PCHL
                 cls._state['pc'] = (cls._state['h'] << 8) | cls._state['l']
             elif op == 0xF9: # SPHL

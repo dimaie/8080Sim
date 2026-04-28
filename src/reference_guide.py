@@ -54,6 +54,7 @@ I8080_DB = {
     "DCX": [{"params": "rp", "desc": "Decrement register pair by 1.", "bin": "00rp1011", "example": "DCX B       ; Decrement 16-bit counter\nMOV A, B\nORA C       ; Check if BC is zero\nJNZ Loop", "regs": "rp", "flags": "None"}],
     "DAD": [{"params": "rp", "desc": "Add register pair to HL.", "bin": "00rp1001", "example": "LXI H, BaseAddr\nLXI D, Offset\nDAD D       ; HL = BaseAddr + Offset", "regs": "H, L", "flags": "CY"}],
     "DAA": [{"params": "None", "desc": "Decimal Adjust Accumulator.", "bin": "00100111", "example": "ADD B       ; Add two BCD numbers\nDAA         ; Adjust result back to BCD", "regs": "A", "flags": "Z, S, P, CY, AC"}],
+    "MUL": [{"params": "B", "desc": "Hardware-accelerated 8-bit unsigned multiplication of the Accumulator (A) and register B. The 16-bit product is stored in the HL register pair.", "bin": "11101101", "example": "MVI A, 10\nMVI B, 20\nMUL B       ; HL = 200", "regs": "H, L", "flags": "None"}],
 
     # --- Logical ---
     "ANA": [
@@ -136,7 +137,7 @@ I8080_DB = {
 
 CMD_TO_COLOR = {
     **{cmd: "#0055cc" for cmd in ["MOV", "MVI", "LXI", "LDA", "STA", "LHLD", "SHLD", "LDAX", "STAX", "XCHG"]},
-    **{cmd: "#0f7b0f" for cmd in ["ADD", "ADC", "ADI", "ACI", "SUB", "SBB", "SUI", "SBI", "INR", "DCR", "INX", "DCX", "DAD", "DAA"]},
+    **{cmd: "#0f7b0f" for cmd in ["ADD", "ADC", "ADI", "ACI", "SUB", "SBB", "SUI", "SBI", "INR", "DCR", "INX", "DCX", "DAD", "DAA", "MUL"]},
     **{cmd: "#6b238e" for cmd in ["ANA", "ANI", "ORA", "ORI", "XRA", "XRI", "CMP", "CPI"]},
     **{cmd: "#b05e00" for cmd in ["RLC", "RRC", "RAL", "RAR"]},
     **{cmd: "#555555" for cmd in ["CMA", "CMC", "STC", "HLT", "NOP", "EI", "DI"]},
@@ -312,6 +313,8 @@ class ReferenceGuide(tk.Toplevel):
                 if u_upper != "M": return False
             elif v == "rp":
                 if u_upper not in ("B", "D", "H", "SP", "PSW", "BC", "DE", "HL"): return False
+            elif v == "B":
+                if u_upper != "B": return False
         return True
 
 if __name__ == "__main__":

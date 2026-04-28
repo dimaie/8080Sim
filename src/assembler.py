@@ -240,6 +240,12 @@ class Assembler:
             r = self._argR(sl, sl['args'][0])
             imm = self._argImmOrLabel(sl, sl['args'][1], curAddr, bits=8, offset=1)
             return [0b110 | (r << 3), imm]
+        elif instrName == 'mul':
+            self._expectArgsCount(sl, 1)
+            r = self._argR(sl, sl['args'][0])
+            if r != 0b000: # 0b000 maps to register 'B'
+                self._assemblyError(sl['pos'], "MUL instruction only supports register B")
+            return [0xED]
         elif instrName == 'nop':
             self._expectArgsCount(sl, 0)
             return [0b00000000]
