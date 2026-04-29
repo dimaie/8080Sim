@@ -313,10 +313,20 @@ class App(tk.Tk):
                 self.active_plugin.autorun = True
                 self.active_plugin.is_launched = False
                 
+            # Copy generated HEX to clipboard
+            try:
+                def to_clipboard(asm, hex_content, total_bytes):
+                    self.clipboard_clear()
+                    self.clipboard_append(hex_content)
+                    
+                self._with_compiled_code(prog, to_clipboard)
+            except Exception as e:
+                print(f"Failed to copy hex to clipboard: {e}")
+
             if not quiet:
                 total_bytes = sum(chunk['length'] for chunk in self.debugger.last_compiled_chunks)
                 self.set_status_success()
-                self.status_var.set(f"Compiled successfully ({total_bytes} bytes). Ready to run.")
+                self.status_var.set(f"Compiled successfully ({total_bytes} bytes) and copied to clipboard. Ready to run.")
             return True
         except Exception as e:
             traceback.print_exc()
@@ -388,25 +398,27 @@ class App(tk.Tk):
             return "break"
             
         try:
-            # Re-assemble locally to guarantee access to the layout chunks
-            parser = Parser()
-            assembler = Assembler()
+            def save_hex(assembler, hex_content, total_bytes):
+                with open(file_path, "w", encoding="utf-8") as f:
+                    f.write(hex_content)
+                self.set_status_success()
+                self.status_var.set(f"Generated HEX to {file_path} ({total_bytes} bytes)")
+                
             source_text = self.code_editor.get_text()
-            source_lines = parser.parse(source_text)
-            assembler.assemble(source_lines)
-            
-            hex_content, total_bytes = self._generate_hex_content(assembler, source_text)
-                
-            with open(file_path, "w", encoding="utf-8") as f:
-                f.write(hex_content)
-                
-            self.set_status_success()
-            self.status_var.set(f"Generated HEX to {file_path} ({total_bytes} bytes)")
+            self._with_compiled_code(source_text, save_hex)
         except Exception as e:
             traceback.print_exc()
             self.set_status_fail(f"Failed to generate HEX: {e}")
             
         return "break"
+
+    def _with_compiled_code(self, source_text, consumer):
+        parser = Parser()
+        assembler = Assembler()
+        source_lines = parser.parse(source_text)
+        assembler.assemble(source_lines)
+        hex_content, total_bytes = self._generate_hex_content(assembler, source_text)
+        consumer(assembler, hex_content, total_bytes)
 
     def _generate_hex_content(self, assembler, source_text):
         lines = source_text.split('\n')
@@ -477,57 +489,55 @@ class App(tk.Tk):
 
     def start_serial_send(self, port):
         try:
-            parser = Parser()
-            assembler = Assembler()
-            source_text = self.code_editor.get_text()
-            source_lines = parser.parse(source_text)
-            assembler.assemble(source_lines)
-            
-            if not assembler.assembled_chunks:
-                self.set_status_fail("No code to send.")
-                return
+            def prepare_and_send(assembler, hex_content, total_bytes):
+                if not assembler.assembled_chunks:
+                    self.set_status_fail("No code to send.")
+                    return
+                    
+                min_addr = min(chunk['addr'] for chunk in assembler.assembled_chunks)
+                max_addr = max(chunk['addr'] + chunk['length'] - 1 for chunk in assembler.assembled_chunks)
                 
-            min_addr = min(chunk['addr'] for chunk in assembler.assembled_chunks)
-            max_addr = max(chunk['addr'] + chunk['length'] - 1 for chunk in assembler.assembled_chunks)
-            
-            length = (max_addr - min_addr) + 1
-            payload = bytearray(length)
-            
-            for chunk in assembler.assembled_chunks:
-                addr = chunk['addr']
-                for i in range(chunk['length']):
-                    payload[addr - min_addr + i] = assembler.memory[addr + i]
-                    
-            header = struct.pack('<HH', min_addr, length)
-            checksum = (sum(header) + sum(payload)) % 256
-            full_data = header + payload + bytes([checksum])
-            
-            self.set_status_ready()
-            self.status_var.set(f"Waiting for SAP-3 ACK on {port}. Type 'R' on monitor...")
-            
-            def send_thread():
-                try:
-                    import serial
-                    with serial.Serial(port, 115200, stopbits=serial.STOPBITS_TWO, timeout=None) as ser:
-                        while ser.read(1) != b'\x06':
-                            pass
-                            
-                        self.after(0, lambda: self.status_var.set("Sending data..."))
-                        ser.write(full_data)
+                length = (max_addr - min_addr) + 1
+                payload = bytearray(length)
+                
+                for chunk in assembler.assembled_chunks:
+                    addr = chunk['addr']
+                    for i in range(chunk['length']):
+                        payload[addr - min_addr + i] = assembler.memory[addr + i]
                         
-                        resp = ser.read(1)
-                        if resp == b'\x06':
-                            self.after(0, lambda: self.status_var.set(f"Successfully sent {length} bytes to SAP-3"))
-                            self.after(0, self.set_status_success)
-                        elif resp == b'\x15':
-                            self.after(0, lambda: self.set_status_fail("SAP-3 reported checksum mismatch."))
-                        else:
-                            self.after(0, lambda: self.set_status_fail(f"Unknown response from SAP-3: {resp}"))
-                except Exception as e:
-                    self.after(0, lambda: self.set_status_fail(f"Serial Error: {e}"))
-                    
-            threading.Thread(target=send_thread, daemon=True).start()
-            
+                header = struct.pack('<HH', min_addr, length)
+                checksum = (sum(header) + sum(payload)) % 256
+                full_data = header + payload + bytes([checksum])
+                
+                self.set_status_ready()
+                self.status_var.set(f"Waiting for SAP-3 ACK on {port}. Type 'R' on monitor...")
+                
+                def send_thread():
+                    try:
+                        import serial
+                        with serial.Serial(port, 115200, stopbits=serial.STOPBITS_TWO, timeout=None) as ser:
+                            while ser.read(1) != b'\x06':
+                                pass
+                                
+                            self.after(0, lambda: self.status_var.set("Sending data..."))
+                            ser.write(full_data)
+                            
+                            resp = ser.read(1)
+                            if resp == b'\x06':
+                                self.after(0, lambda: self.status_var.set(f"Successfully sent {length} bytes to SAP-3"))
+                                self.after(0, self.set_status_success)
+                            elif resp == b'\x15':
+                                self.after(0, lambda: self.set_status_fail("SAP-3 reported checksum mismatch."))
+                            else:
+                                self.after(0, lambda: self.set_status_fail(f"Unknown response from SAP-3: {resp}"))
+                    except Exception as e:
+                        self.after(0, lambda: self.set_status_fail(f"Serial Error: {e}"))
+                        
+                threading.Thread(target=send_thread, daemon=True).start()
+
+            source_text = self.code_editor.get_text()
+            self._with_compiled_code(source_text, prepare_and_send)
+
         except Exception as e:
             traceback.print_exc()
             self.set_status_fail(f"Failed to prepare data: {e}")

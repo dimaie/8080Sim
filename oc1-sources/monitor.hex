@@ -1,123 +1,126 @@
 @0000       // Start at address 0x0000
-C3 2B 00    // JMP START
+C3 34 00    // JMP START
 
 @0008       // Start at address 0x0008
-C3 C0 05    // JMP BP_HANDLER
+C3 E0 05    // JMP BP_HANDLER
 
 @0010       // Start at address 0x0010
-C3 4A 02    // API_PRINT_CHAR:    JMP PRINT_CHAR_C
-C3 57 02    // API_READ_KEY:      JMP READ_KEY_C
-C3 62 02    // API_CLEAR_SCREEN:  JMP CLEAR_SCREEN_C
-C3 98 02    // API_PUT_CHAR_XY:   JMP PUT_CHAR_XY_C
-C3 C2 02    // API_READ_CHAR_XY:  JMP READ_CHAR_XY_C
-C3 E7 02    // API_READ_PIXEL_XY: JMP READ_PIXEL_XY_C
-C3 44 03    // API_CHECK_KEY:     JMP CHECK_KEY_C
-C3 55 03    // API_DRAW_LINE:     JMP DRAW_LINE_C
-C3 C1 04    // API_PUT_PIXEL_XY:  JMP PUT_PIXEL_XY_C
+C3 53 02    // API_PRINT_CHAR:    JMP PRINT_CHAR_C
+C3 60 02    // API_READ_KEY:      JMP READ_KEY_C
+C3 6B 02    // API_CLEAR_SCREEN:  JMP CLEAR_SCREEN_C
+C3 A1 02    // API_PRINT_STRING:  JMP PRINT_STRING_C
+C3 BB 02    // API_SET_CURSOR_XY: JMP SET_CURSOR_XY_C
+C3 EA 02    // API_GET_CURSOR_XY: JMP GET_CURSOR_XY_C
+C3 F3 02    // API_READ_CHAR:     JMP READ_CHAR_C
+C3 FA 02    // API_SET_CURSOR_STYLE: JMP SET_CURSOR_STYLE_C
+C3 07 03    // API_READ_PIXEL_XY: JMP READ_PIXEL_XY_C
+C3 64 03    // API_CHECK_KEY:     JMP CHECK_KEY_C
+C3 75 03    // API_DRAW_LINE:     JMP DRAW_LINE_C
+C3 E1 04    // API_PUT_PIXEL_XY:  JMP PUT_PIXEL_XY_C
 31 FF 3F    // LXI SP, 0x3FFF      ; Initialize Stack Pointer
-21 4D 00    // LXI H, MAIN_LOOP
+21 56 00    // LXI H, MAIN_LOOP
 E5          // PUSH H
 21 00 00    // LXI H, 0
 39          // DAD SP
 22 52 20    // SHLD VAR_REGS + 8
 AF          // XRA A
 32 56 20    // STA VAR_BP_ACTIVE
-CD D7 09    // CALL CLEAR_SCREEN
+CD F7 09    // CALL CLEAR_SCREEN
 3E 02       // MVI A, 2
 32 05 C0    // STA 0xC005
-CD 69 0A    // CALL SYNC_CURSOR
+CD 89 0A    // CALL SYNC_CURSOR
 3E 00       // MVI A, 0
 32 04 20    // STA VAR_KB_STATE
 3E 2D       // MVI A, '-'
-CD F8 09    // CALL PRINT_CHAR
+CD 18 0A    // CALL PRINT_CHAR
 3E 3E       // MVI A, '>'
-CD F8 09    // CALL PRINT_CHAR
-CD 59 08    // CALL READ_LINE
+CD 18 0A    // CALL PRINT_CHAR
+CD 79 08    // CALL READ_LINE
 3A 05 20    // LDA VAR_INPUT_LEN
 B7          // ORA A               ; Is length 0?
-CA 4D 00    // JZ MAIN_LOOP        ; If empty, just print new prompt
+CA 56 00    // JZ MAIN_LOOP        ; If empty, just print new prompt
 21 06 20    // LXI H, VAR_INPUT_BUF
 7E          // MOV A, M
 FE 44       // CPI 'D'
-CA 98 00    // JZ CMD_DUMP
+CA A1 00    // JZ CMD_DUMP
 FE 4D       // CPI 'M'
-CA CE 00    // JZ CMD_MODIFY
+CA D7 00    // JZ CMD_MODIFY
 FE 47       // CPI 'G'
-CA 18 01    // JZ CMD_GO
+CA 21 01    // JZ CMD_GO
 FE 58       // CPI 'X'
-CA 4C 01    // JZ CMD_EXAMINE
+CA 55 01    // JZ CMD_EXAMINE
 FE 52       // CPI 'R'
-CA B4 01    // JZ CMD_RECEIVE
+CA BD 01    // JZ CMD_RECEIVE
 FE 55       // CPI 'U'
-CA A5 06    // JZ CMD_UNASSEMBLE
+CA C5 06    // JZ CMD_UNASSEMBLE
 FE 53       // CPI 'S'
-CA E9 04    // JZ CMD_STEP
+CA 09 05    // JZ CMD_STEP
 FE 42       // CPI 'B'
-CA 1D 05    // JZ CMD_BREAKPOINT
+CA 3D 05    // JZ CMD_BREAKPOINT
 3E 3F       // MVI A, '?'
-CD F8 09    // CALL PRINT_CHAR
-CD 1A 0A    // CALL NEW_LINE
-C3 4D 00    // JMP MAIN_LOOP
+CD 18 0A    // CALL PRINT_CHAR
+CD 3A 0A    // CALL NEW_LINE
+C3 56 00    // JMP MAIN_LOOP
 21 07 20    // LXI H, VAR_INPUT_BUF + 1
-CD 3D 09    // CALL SKIP_SPACES
-CD 5D 09    // CALL PARSE_HEX_WORD
-DA 8D 00    // JC CMD_ERROR        ; Invalid hex characters
+CD 5D 09    // CALL SKIP_SPACES
+CD 7D 09    // CALL PARSE_HEX_WORD
+DA 96 00    // JC CMD_ERROR        ; Invalid hex characters
 06 02       // MVI B, 2
 7C          // MOV A, H
-CD 1F 09    // CALL PRINT_HEX_BYTE
+CD 3F 09    // CALL PRINT_HEX_BYTE
 7D          // MOV A, L
-CD 1F 09    // CALL PRINT_HEX_BYTE
+CD 3F 09    // CALL PRINT_HEX_BYTE
 3E 3A       // MVI A, ':'
-CD F8 09    // CALL PRINT_CHAR
-CD 17 09    // CALL PRINT_SPACE
+CD 18 0A    // CALL PRINT_CHAR
+CD 37 09    // CALL PRINT_SPACE
 0E 10       // MVI C, 16
 7E          // MOV A, M
-CD 1F 09    // CALL PRINT_HEX_BYTE
-CD 17 09    // CALL PRINT_SPACE
+CD 3F 09    // CALL PRINT_HEX_BYTE
+CD 37 09    // CALL PRINT_SPACE
 23          // INX H
 0D          // DCR C
-C2 B8 00    // JNZ DUMP_BYTE_LOOP
-CD 1A 0A    // CALL NEW_LINE
+C2 C1 00    // JNZ DUMP_BYTE_LOOP
+CD 3A 0A    // CALL NEW_LINE
 05          // DCR B
-C2 A6 00    // JNZ DUMP_LINE_LOOP
-C3 4D 00    // JMP MAIN_LOOP
+C2 AF 00    // JNZ DUMP_LINE_LOOP
+C3 56 00    // JMP MAIN_LOOP
 21 07 20    // LXI H, VAR_INPUT_BUF + 1
-CD 3D 09    // CALL SKIP_SPACES
-CD 5D 09    // CALL PARSE_HEX_WORD
-DA 8D 00    // JC CMD_ERROR        ; Invalid hex characters
+CD 5D 09    // CALL SKIP_SPACES
+CD 7D 09    // CALL PARSE_HEX_WORD
+DA 96 00    // JC CMD_ERROR        ; Invalid hex characters
 22 46 20    // SHLD VAR_MODIFY_PTR
 2A 46 20    // LHLD VAR_MODIFY_PTR
 7C          // MOV A, H
-CD 1F 09    // CALL PRINT_HEX_BYTE
+CD 3F 09    // CALL PRINT_HEX_BYTE
 7D          // MOV A, L
-CD 1F 09    // CALL PRINT_HEX_BYTE
+CD 3F 09    // CALL PRINT_HEX_BYTE
 3E 3A       // MVI A, ':'
-CD F8 09    // CALL PRINT_CHAR
+CD 18 0A    // CALL PRINT_CHAR
 7E          // MOV A, M
-CD 1F 09    // CALL PRINT_HEX_BYTE
+CD 3F 09    // CALL PRINT_HEX_BYTE
 3E 3A       // MVI A, ':'
-CD F8 09    // CALL PRINT_CHAR
-CD 59 08    // CALL READ_LINE
+CD 18 0A    // CALL PRINT_CHAR
+CD 79 08    // CALL READ_LINE
 3A 05 20    // LDA VAR_INPUT_LEN
 B7          // ORA A
-CA 4D 00    // JZ MAIN_LOOP        ; Empty input, return to prompt
+CA 56 00    // JZ MAIN_LOOP        ; Empty input, return to prompt
 21 06 20    // LXI H, VAR_INPUT_BUF
-CD 3D 09    // CALL SKIP_SPACES
-CD 45 09    // CALL PARSE_HEX_BYTE
-DA 4D 00    // JC MAIN_LOOP        ; If invalid hex, return to prompt
+CD 5D 09    // CALL SKIP_SPACES
+CD 65 09    // CALL PARSE_HEX_BYTE
+DA 56 00    // JC MAIN_LOOP        ; If invalid hex, return to prompt
 47          // MOV B, A
 2A 46 20    // LHLD VAR_MODIFY_PTR
 70          // MOV M, B
 23          // INX H
 22 46 20    // SHLD VAR_MODIFY_PTR
-C3 DD 00    // JMP MODIFY_PROMPT
+C3 E6 00    // JMP MODIFY_PROMPT
 3A 05 20    // LDA VAR_INPUT_LEN
 FE 01       // CPI 1               ; Was it just "G" without address?
-CA 2F 01    // JZ GO_EXECUTE
+CA 38 01    // JZ GO_EXECUTE
 21 07 20    // LXI H, VAR_INPUT_BUF + 1
-CD 3D 09    // CALL SKIP_SPACES
-CD 5D 09    // CALL PARSE_HEX_WORD
-DA 8D 00    // JC CMD_ERROR        ; Invalid hex characters
+CD 5D 09    // CALL SKIP_SPACES
+CD 7D 09    // CALL PARSE_HEX_WORD
+DA 96 00    // JC CMD_ERROR        ; Invalid hex characters
 22 54 20    // SHLD VAR_REGS + 10
 2A 52 20    // LHLD VAR_REGS + 8   ; Load User's SP
 F9          // SPHL                ; SP = User's SP
@@ -138,20 +141,20 @@ F1          // POP PSW
 C9          // RET                 ; Pops PC and jumps to user program!
 21 4A 20    // LXI H, VAR_REGS
 22 46 20    // SHLD VAR_MODIFY_PTR
-21 F8 0A    // LXI H, REG_NAMES
+21 18 0B    // LXI H, REG_NAMES
 22 48 20    // SHLD VAR_REG_NAME_PTR
 2A 48 20    // LHLD VAR_REG_NAME_PTR
 7E          // MOV A, M
 B7          // ORA A
-CA 4D 00    // JZ MAIN_LOOP        ; Null terminator means end of list
-CD F8 09    // CALL PRINT_CHAR     ; First letter of pair
+CA 56 00    // JZ MAIN_LOOP        ; Null terminator means end of list
+CD 18 0A    // CALL PRINT_CHAR     ; First letter of pair
 23          // INX H
 7E          // MOV A, M
-CD F8 09    // CALL PRINT_CHAR     ; Second letter of pair
+CD 18 0A    // CALL PRINT_CHAR     ; Second letter of pair
 23          // INX H
 22 48 20    // SHLD VAR_REG_NAME_PTR
 3E 3D       // MVI A, '='
-CD F8 09    // CALL PRINT_CHAR
+CD 18 0A    // CALL PRINT_CHAR
 2A 46 20    // LHLD VAR_MODIFY_PTR
 5E          // MOV E, M            ; Low byte
 23          // INX H
@@ -159,57 +162,57 @@ CD F8 09    // CALL PRINT_CHAR
 23          // INX H
 E5          // PUSH H              ; Save pointer to NEXT register pair
 7A          // MOV A, D
-CD 1F 09    // CALL PRINT_HEX_BYTE ; Print High byte
+CD 3F 09    // CALL PRINT_HEX_BYTE ; Print High byte
 7B          // MOV A, E
-CD 1F 09    // CALL PRINT_HEX_BYTE ; Print Low byte
+CD 3F 09    // CALL PRINT_HEX_BYTE ; Print Low byte
 3E 3A       // MVI A, ':'
-CD F8 09    // CALL PRINT_CHAR
-CD 17 09    // CALL PRINT_SPACE
-CD 59 08    // CALL READ_LINE
+CD 18 0A    // CALL PRINT_CHAR
+CD 37 09    // CALL PRINT_SPACE
+CD 79 08    // CALL READ_LINE
 3A 05 20    // LDA VAR_INPUT_LEN
 B7          // ORA A
-CA AD 01    // JZ EXAMINE_NEXT     ; Empty input, skip to next pair
+CA B6 01    // JZ EXAMINE_NEXT     ; Empty input, skip to next pair
 21 06 20    // LXI H, VAR_INPUT_BUF
-CD 3D 09    // CALL SKIP_SPACES
-CD 5D 09    // CALL PARSE_HEX_WORD
-DA A9 01    // JC EXAMINE_ERR      ; If parse fails, output error
+CD 5D 09    // CALL SKIP_SPACES
+CD 7D 09    // CALL PARSE_HEX_WORD
+DA B2 01    // JC EXAMINE_ERR      ; If parse fails, output error
 EB          // XCHG                ; DE = parsed new value
 2A 46 20    // LHLD VAR_MODIFY_PTR
 73          // MOV M, E            ; Store Low byte
 23          // INX H
 72          // MOV M, D            ; Store High byte
-C3 AD 01    // JMP EXAMINE_NEXT
+C3 B6 01    // JMP EXAMINE_NEXT
 E1          // POP H               ; Restore stack before throwing error
-C3 8D 00    // JMP CMD_ERROR
+C3 96 00    // JMP CMD_ERROR
 E1          // POP H               ; Restore pointer to next register pair
 22 46 20    // SHLD VAR_MODIFY_PTR
-C3 58 01    // JMP EXAMINE_PROMPT
+C3 61 01    // JMP EXAMINE_PROMPT
 3A 05 20    // LDA VAR_INPUT_LEN
 FE 01       // CPI 1               ; Ensure command is exactly 'R'
-C2 8D 00    // JNZ CMD_ERROR
-CD 1A 0A    // CALL NEW_LINE       ; Start on a fresh line for diagnostic output
+C2 96 00    // JNZ CMD_ERROR
+CD 3A 0A    // CALL NEW_LINE       ; Start on a fresh line for diagnostic output
 DB 03       // IN 0x03
 E6 02       // ANI 0x02
-CA CB 01    // JZ FLUSH_DONE       ; If RX_READY is 0, buffer is clean!
+CA D4 01    // JZ FLUSH_DONE       ; If RX_READY is 0, buffer is clean!
 DB 02       // IN 0x02             ; If not, read the garbage byte and discard it
-C3 BF 01    // JMP FLUSH_RX
+C3 C8 01    // JMP FLUSH_RX
 3E 06       // MVI A, 0x06         ; Send ACK to PC to start transmission
-CD 0B 09    // CALL UART_SEND_BYTE
+CD 2B 09    // CALL UART_SEND_BYTE
 16 00       // MVI D, 0            ; D will hold our Rolling Checksum
-CD 01 09    // CALL UART_RECV_BYTE
+CD 21 09    // CALL UART_RECV_BYTE
 5F          // MOV E, A            ; E = Addr Low
 82          // ADD D
 57          // MOV D, A
-CD 01 09    // CALL UART_RECV_BYTE
+CD 21 09    // CALL UART_RECV_BYTE
 67          // MOV H, A            ; H = Addr High
 82          // ADD D
 57          // MOV D, A
 6B          // MOV L, E            ; HL = Target Address
-CD 01 09    // CALL UART_RECV_BYTE
+CD 21 09    // CALL UART_RECV_BYTE
 4F          // MOV C, A            ; C = Length Low
 82          // ADD D
 57          // MOV D, A
-CD 01 09    // CALL UART_RECV_BYTE
+CD 21 09    // CALL UART_RECV_BYTE
 47          // MOV B, A            ; B = Length High
 82          // ADD D
 57          // MOV D, A
@@ -217,62 +220,62 @@ C5          // PUSH B              ; Save original Length for diagnostic summary
 E5          // PUSH H              ; Save original Target Address for diagnostic summary
 78          // MOV A, B
 B1          // ORA C
-CA 09 02    // JZ RECV_VERIFY
-CD 01 09    // CALL UART_RECV_BYTE
+CA 12 02    // JZ RECV_VERIFY
+CD 21 09    // CALL UART_RECV_BYTE
 77          // MOV M, A            ; Store byte to memory
 82          // ADD D               ; Add to checksum
 57          // MOV D, A            ; Save checksum
 79          // MOV A, C
 B7          // ORA A
-C2 02 02    // JNZ RECV_SKIP_DOT
+C2 0B 02    // JNZ RECV_SKIP_DOT
 3E 2E       // MVI A, '.'
-CD F8 09    // CALL PRINT_CHAR
+CD 18 0A    // CALL PRINT_CHAR
 23          // INX H               ; Next address
 0B          // DCX B               ; Decrement remaining length
 78          // MOV A, B
 B1          // ORA C
-C2 F2 01    // JNZ RECV_LOOP       ; Repeat until BC == 0
-CD 01 09    // CALL UART_RECV_BYTE ; Read PC Checksum
+C2 FB 01    // JNZ RECV_LOOP       ; Repeat until BC == 0
+CD 21 09    // CALL UART_RECV_BYTE ; Read PC Checksum
 BA          // CMP D               ; Compare with our calculated checksum
-C2 40 02    // JNZ RECV_ERROR
+C2 49 02    // JNZ RECV_ERROR
 3E 06       // MVI A, 0x06         ; Send Success ACK
-CD 0B 09    // CALL UART_SEND_BYTE
-CD 1A 0A    // CALL NEW_LINE
+CD 2B 09    // CALL UART_SEND_BYTE
+CD 3A 0A    // CALL NEW_LINE
 3E 4F       // MVI A, 'O'
-CD F8 09    // CALL PRINT_CHAR
+CD 18 0A    // CALL PRINT_CHAR
 3E 4B       // MVI A, 'K'
-CD F8 09    // CALL PRINT_CHAR
-CD 17 09    // CALL PRINT_SPACE
+CD 18 0A    // CALL PRINT_CHAR
+CD 37 09    // CALL PRINT_SPACE
 E1          // POP H               ; Restore Target Address
 7C          // MOV A, H
-CD 1F 09    // CALL PRINT_HEX_BYTE
+CD 3F 09    // CALL PRINT_HEX_BYTE
 7D          // MOV A, L
-CD 1F 09    // CALL PRINT_HEX_BYTE
-CD 17 09    // CALL PRINT_SPACE
+CD 3F 09    // CALL PRINT_HEX_BYTE
+CD 37 09    // CALL PRINT_SPACE
 C1          // POP B               ; Restore Length
 78          // MOV A, B
-CD 1F 09    // CALL PRINT_HEX_BYTE
+CD 3F 09    // CALL PRINT_HEX_BYTE
 79          // MOV A, C
-CD 1F 09    // CALL PRINT_HEX_BYTE
-CD 1A 0A    // CALL NEW_LINE
-C3 4D 00    // JMP MAIN_LOOP       ; Return quietly to prompt
+CD 3F 09    // CALL PRINT_HEX_BYTE
+CD 3A 0A    // CALL NEW_LINE
+C3 56 00    // JMP MAIN_LOOP       ; Return quietly to prompt
 E1          // POP H               ; Clean up stack (Address)
 C1          // POP B               ; Clean up stack (Length)
 3E 15       // MVI A, 0x15         ; Send NAK
-CD 0B 09    // CALL UART_SEND_BYTE
-C3 8D 00    // JMP CMD_ERROR       ; Print '?' and return to prompt
+CD 2B 09    // CALL UART_SEND_BYTE
+C3 96 00    // JMP CMD_ERROR       ; Print '?' and return to prompt
 C5          // PUSH B
 D5          // PUSH D
 21 06 00    // LXI H, 6
 39          // DAD SP
 7E          // MOV A, M            ; Read low byte of 'c'
-CD F8 09    // CALL PRINT_CHAR     ; Call monitor native routine
+CD 18 0A    // CALL PRINT_CHAR     ; Call monitor native routine
 D1          // POP D
 C1          // POP B
 C9          // RET
 C5          // PUSH B
 D5          // PUSH D
-CD C3 08    // CALL GET_KEY        ; Blocks, returns ASCII in A
+CD E3 08    // CALL GET_KEY        ; Blocks, returns ASCII in A
 6F          // MOV L, A
 26 00       // MVI H, 0
 D1          // POP D
@@ -284,15 +287,15 @@ D5          // PUSH D
 39          // DAD SP
 7E          // MOV A, M            ; Read low byte of 'layer'
 FE 02       // CPI 2
-CA 82 02    // JZ _CS_GFX
+CA 8B 02    // JZ _CS_GFX
 FE 01       // CPI 1
-CA 7C 02    // JZ _CS_TXT
-CD D7 09    // CALL CLEAR_SCREEN   ; Clears Text RAM and resets cursor
-CD 88 02    // CALL _DO_CS_GFX
-C3 85 02    // JMP _CS_DONE
-CD D7 09    // CALL CLEAR_SCREEN
-C3 85 02    // JMP _CS_DONE
-CD 88 02    // CALL _DO_CS_GFX
+CA 85 02    // JZ _CS_TXT
+CD F7 09    // CALL CLEAR_SCREEN   ; Clears Text RAM and resets cursor
+CD 91 02    // CALL _DO_CS_GFX
+C3 8E 02    // JMP _CS_DONE
+CD F7 09    // CALL CLEAR_SCREEN
+C3 8E 02    // JMP _CS_DONE
+CD 91 02    // CALL _DO_CS_GFX
 D1          // POP D
 C1          // POP B
 C9          // RET
@@ -303,65 +306,70 @@ C9          // RET
 0B          // DCX B
 78          // MOV A, B
 B1          // ORA C
-C2 8E 02    // JNZ _CS_GFX_LOOP
+C2 97 02    // JNZ _CS_GFX_LOOP
 C9          // RET
 C5          // PUSH B
 D5          // PUSH D
-21 0A 00    // LXI H, 10
-39          // DAD SP
-7E          // MOV A, M
-6F          // MOV L, A
-26 00       // MVI H, 0            ; HL = y
-29          // DAD H               ; y * 2
-29          // DAD H               ; y * 4
-29          // DAD H               ; y * 8
-29          // DAD H               ; y * 16
-29          // DAD H               ; y * 32
-29          // DAD H               ; y * 64
-EB          // XCHG                ; DE = y * 64
+E5          // PUSH H
 21 08 00    // LXI H, 8
 39          // DAD SP
-7E          // MOV A, M            ; A = x
-83          // ADD E
-5F          // MOV E, A
-7A          // MOV A, D
-CE 00       // ACI 0
-57          // MOV D, A            ; DE = (y * 64) + x
-21 00 A0    // LXI H, 0xA000
-19          // DAD D               ; HL = 0xA000 + (y * 64) + x
-EB          // XCHG                ; DE points to the VRAM target
-21 06 00    // LXI H, 6
-39          // DAD SP
-7E          // MOV A, M            ; A = c
-12          // STAX D              ; Write 'c' directly to VRAM target
+5E          // MOV E, M
+23          // INX H
+56          // MOV D, M
+1A          // LDAX D
+B7          // ORA A
+CA B7 02    // JZ _PSC_DONE
+CD 18 0A    // CALL PRINT_CHAR
+13          // INX D
+C3 AB 02    // JMP _PSC_LOOP
+E1          // POP H
 D1          // POP D
 C1          // POP B
 C9          // RET
 C5          // PUSH B
 D5          // PUSH D
-21 08 00    // LXI H, 8
-39          // DAD SP
-6E          // MOV L, M
-26 00       // MVI H, 0            ; HL = y
-29          // DAD H               ; y * 2
-29          // DAD H               ; y * 4
-29          // DAD H               ; y * 8
-29          // DAD H               ; y * 16
-29          // DAD H               ; y * 32
-29          // DAD H               ; y * 64
-EB          // XCHG                ; DE = y * 64
 21 06 00    // LXI H, 6
 39          // DAD SP
-7E          // MOV A, M            ; A = x
-83          // ADD E
+7E          // MOV A, M
+32 00 20    // STA VAR_CURSOR_X
+21 08 00    // LXI H, 8
+39          // DAD SP
+7E          // MOV A, M
+32 01 20    // STA VAR_CURSOR_Y
+6F          // MOV L, A
+26 00       // MVI H, 0
+29          // DAD H
+29          // DAD H
+29          // DAD H
+29          // DAD H
+29          // DAD H
+29          // DAD H
+3A 00 20    // LDA VAR_CURSOR_X
 5F          // MOV E, A
-7A          // MOV A, D
-CE 00       // ACI 0
-57          // MOV D, A            ; DE = (y * 64) + x
-21 00 A0    // LXI H, 0xA000
-19          // DAD D               ; HL = 0xA000 + (y * 64) + x
-6E          // MOV L, M            ; Return value in L
-26 00       // MVI H, 0            ; H = 0
+16 00       // MVI D, 0
+19          // DAD D
+11 00 A0    // LXI D, 0xA000
+19          // DAD D
+22 02 20    // SHLD VAR_CURSOR_PTR
+CD 89 0A    // CALL SYNC_CURSOR
+D1          // POP D
+C1          // POP B
+C9          // RET
+3A 00 20    // LDA VAR_CURSOR_X
+6F          // MOV L, A
+3A 01 20    // LDA VAR_CURSOR_Y
+67          // MOV H, A
+C9          // RET
+2A 02 20    // LHLD VAR_CURSOR_PTR
+6E          // MOV L, M
+26 00       // MVI H, 0
+C9          // RET
+C5          // PUSH B
+D5          // PUSH D
+21 06 00    // LXI H, 6
+39          // DAD SP
+7E          // MOV A, M
+32 05 C0    // STA 0xC005
 D1          // POP D
 C1          // POP B
 C9          // RET
@@ -412,7 +420,7 @@ E1          // POP H               ; HL = y * 32
 39          // DAD SP
 7E          // MOV A, M            ; A = x low
 E6 07       // ANI 0x07            ; A = x % 8
-11 3C 03    // LXI D, _RP_MASKS
+11 5C 03    // LXI D, _RP_MASKS
 83          // ADD E ! MOV E, A ! MOV A, D ! ACI 0 ! MOV D, A ; DE = _RP_MASKS + (x % 8)
 5F          // ADD E ! MOV E, A ! MOV A, D ! ACI 0 ! MOV D, A ; DE = _RP_MASKS + (x % 8)
 7A          // ADD E ! MOV E, A ! MOV A, D ! ACI 0 ! MOV D, A ; DE = _RP_MASKS + (x % 8)
@@ -420,10 +428,10 @@ CE 00       // ADD E ! MOV E, A ! MOV A, D ! ACI 0 ! MOV D, A ; DE = _RP_MASKS +
 57          // ADD E ! MOV E, A ! MOV A, D ! ACI 0 ! MOV D, A ; DE = _RP_MASKS + (x % 8)
 1A          // LDAX D              ; A = Specific Bit Mask
 A0          // ANA B               ; AND mask with VRAM byte
-CA 35 03    // JZ _RP_ZERO
+CA 55 03    // JZ _RP_ZERO
 2E 01       // MVI L, 1
 26 00       // MVI H, 0
-C3 39 03    // JMP _RP_DONE
+C3 59 03    // JMP _RP_DONE
 2E 00       // MVI L, 0
 26 00       // MVI H, 0
 D1          // POP D
@@ -432,7 +440,7 @@ C9          // RET
 80 40 20 10 08 04 02 01 // DB 0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01
 DB 01       // IN 0x01
 E6 01       // ANI 0x01
-CA 51 03    // JZ _CK_EMPTY
+CA 71 03    // JZ _CK_EMPTY
 DB 00       // IN 0x00
 6F          // MOV L, A
 26 00       // MVI H, 0
@@ -483,10 +491,10 @@ EB          // XCHG
 7A          // MOV A, D
 9C          // SBB H
 47          // MOV B, A
-FA A5 03    // JM DL_X_NEG
+FA C5 03    // JM DL_X_NEG
 21 01 00    // LXI H, 1
 22 6A 20    // SHLD VAR_DL_SX
-C3 B2 03    // JMP DL_X_DONE
+C3 D2 03    // JMP DL_X_DONE
 21 FF FF    // LXI H, 0xFFFF       ; -1
 22 6A 20    // SHLD VAR_DL_SX
 78          // MOV A, B
@@ -508,7 +516,7 @@ EB          // XCHG
 7A          // MOV A, D
 9C          // SBB H
 47          // MOV B, A
-FA D7 03    // JM DL_Y_NEG
+FA F7 03    // JM DL_Y_NEG
 21 01 00    // LXI H, 1
 22 6C 20    // SHLD VAR_DL_SY
 78          // MOV A, B
@@ -518,7 +526,7 @@ FA D7 03    // JM DL_Y_NEG
 2F          // CMA
 4F          // MOV C, A
 03          // INX B
-C3 DD 03    // JMP DL_Y_DONE
+C3 FD 03    // JMP DL_Y_DONE
 21 FF FF    // LXI H, 0xFFFF       ; -1
 22 6C 20    // SHLD VAR_DL_SY
 69          // MOV L, C
@@ -529,26 +537,26 @@ EB          // XCHG
 2A 68 20    // LHLD VAR_DL_DY
 19          // DAD D
 22 6E 20    // SHLD VAR_DL_ERR
-CD 71 04    // CALL DRAW_PIXEL
+CD 91 04    // CALL DRAW_PIXEL
 2A 5E 20    // LHLD VAR_DL_X0
 EB          // XCHG
 2A 62 20    // LHLD VAR_DL_X1
 7D          // MOV A, L
 BB          // CMP E
-C2 15 04    // JNZ DL_CONT
+C2 35 04    // JNZ DL_CONT
 7C          // MOV A, H
 BA          // CMP D
-C2 15 04    // JNZ DL_CONT
+C2 35 04    // JNZ DL_CONT
 2A 60 20    // LHLD VAR_DL_Y0
 EB          // XCHG
 2A 64 20    // LHLD VAR_DL_Y1
 7D          // MOV A, L
 BB          // CMP E
-C2 15 04    // JNZ DL_CONT
+C2 35 04    // JNZ DL_CONT
 7C          // MOV A, H
 BA          // CMP D
-C2 15 04    // JNZ DL_CONT
-C3 6D 04    // JMP DL_END
+C2 35 04    // JNZ DL_CONT
+C3 8D 04    // JMP DL_END
 2A 6E 20    // LHLD VAR_DL_ERR
 29          // DAD H               ; e2 = err * 2
 E5          // PUSH H              ; Save e2
@@ -560,7 +568,7 @@ EB          // XCHG
 7A          // MOV A, D
 9C          // SBB H
 47          // MOV B, A
-FA 3D 04    // JM DL_SKIP_X
+FA 5D 04    // JM DL_SKIP_X
 2A 6E 20    // LHLD VAR_DL_ERR
 EB          // XCHG
 2A 68 20    // LHLD VAR_DL_DY
@@ -581,11 +589,11 @@ D1          // POP D               ; Restore e2 to DE
 47          // MOV B, A
 78          // MOV A, B
 B1          // ORA C
-CA 54 04    // JZ DL_UPDATE_Y
+CA 74 04    // JZ DL_UPDATE_Y
 78          // MOV A, B
 B7          // ORA A
-FA 54 04    // JM DL_UPDATE_Y
-C3 6A 04    // JMP DL_SKIP_Y
+FA 74 04    // JM DL_UPDATE_Y
+C3 8A 04    // JMP DL_SKIP_Y
 2A 6E 20    // LHLD VAR_DL_ERR
 EB          // XCHG
 2A 66 20    // LHLD VAR_DL_DX
@@ -596,7 +604,7 @@ EB          // XCHG
 2A 6C 20    // LHLD VAR_DL_SY
 19          // DAD D
 22 60 20    // SHLD VAR_DL_Y0
-C3 ED 03    // JMP DL_LOOP
+C3 0D 04    // JMP DL_LOOP
 E1          // POP H
 D1          // POP D
 C1          // POP B
@@ -604,14 +612,14 @@ C9          // RET
 2A 5E 20    // LHLD VAR_DL_X0
 7C          // MOV A, H
 B7          // ORA A
-C2 C0 04    // JNZ DP_SKIP         ; Out of bounds check (X < 0 || X > 255)
+C2 E0 04    // JNZ DP_SKIP         ; Out of bounds check (X < 0 || X > 255)
 2A 60 20    // LHLD VAR_DL_Y0
 7C          // MOV A, H
 B7          // ORA A
-C2 C0 04    // JNZ DP_SKIP         ; Out of bounds check (Y < 0 || Y > 255)
+C2 E0 04    // JNZ DP_SKIP         ; Out of bounds check (Y < 0 || Y > 255)
 7D          // MOV A, L
 FE F0       // CPI 240
-D2 C0 04    // JNC DP_SKIP         ; Out of bounds check (Y >= 240)
+D2 E0 04    // JNC DP_SKIP         ; Out of bounds check (Y >= 240)
 6F          // MOV L, A
 26 00       // MVI H, 0
 29          // DAD H
@@ -633,7 +641,7 @@ E6 1F       // ANI 0x1F            ; Mask out garbage bits to ensure clean X/8
 19          // DAD D
 3A 5E 20    // LDA VAR_DL_X0
 E6 07       // ANI 0x07
-11 3C 03    // LXI D, _RP_MASKS
+11 5C 03    // LXI D, _RP_MASKS
 83          // ADD E
 5F          // MOV E, A
 7A          // MOV A, D
@@ -643,7 +651,7 @@ CE 00       // ACI 0
 47          // MOV B, A            ; Store bitmask in B
 3A 70 20    // LDA VAR_DL_COLOR
 B7          // ORA A
-CA BC 04    // JZ DP_CLEAR
+CA DC 04    // JZ DP_CLEAR
 7E          // MOV A, M
 B0          // ORA B
 77          // MOV M, A
@@ -674,7 +682,7 @@ EB          // XCHG
 39          // DAD SP
 7E          // MOV A, M
 32 70 20    // STA VAR_DL_COLOR
-CD 71 04    // CALL DRAW_PIXEL
+CD 91 04    // CALL DRAW_PIXEL
 E1          // POP H
 D1          // POP D
 C1          // POP B
@@ -682,41 +690,41 @@ C9          // RET
 2A 54 20    // LHLD VAR_REGS + 10
 46          // MOV B, M            ; B = opcode
 E5          // PUSH H              ; Save User PC
-21 25 0B    // LXI H, DISASM_MAP
+21 45 0B    // LXI H, DISASM_MAP
 58          // MOV E, B
 16 00       // MVI D, 0
 19          // DAD D
 7E          // MOV A, M            ; A = Template ID
-CD E2 07    // CALL GET_TEMPLATE   ; HL = Template String
+CD 02 08    // CALL GET_TEMPLATE   ; HL = Template String
 16 01       // MVI D, 1            ; Default Length = 1
 7E          // MOV A, M
 B7          // ORA A
-CA 15 05    // JZ S_LEN_DONE
+CA 35 05    // JZ S_LEN_DONE
 23          // INX H
 FE 86       // CPI 0x86
-C2 0B 05    // JNZ S_LEN_NOT_2
+C2 2B 05    // JNZ S_LEN_NOT_2
 16 02       // MVI D, 2
-C3 FB 04    // JMP S_LEN_LOOP
+C3 1B 05    // JMP S_LEN_LOOP
 FE 87       // CPI 0x87
-C2 FB 04    // JNZ S_LEN_LOOP
+C2 1B 05    // JNZ S_LEN_LOOP
 16 03       // MVI D, 3
-C3 FB 04    // JMP S_LEN_LOOP
+C3 1B 05    // JMP S_LEN_LOOP
 E1          // POP H               ; HL = User PC
 5A          // MOV E, D
 16 00       // MVI D, 0
 19          // DAD D               ; HL = Next PC
-C3 31 05    // JMP INJECT_BP
+C3 51 05    // JMP INJECT_BP
 3A 05 20    // LDA VAR_INPUT_LEN
 FE 01       // CPI 1
-CA 8C 05    // JZ BP_CLEAR
+CA AC 05    // JZ BP_CLEAR
 21 07 20    // LXI H, VAR_INPUT_BUF + 1
-CD 3D 09    // CALL SKIP_SPACES
-CD 5D 09    // CALL PARSE_HEX_WORD
-DA 8D 00    // JC CMD_ERROR
+CD 5D 09    // CALL SKIP_SPACES
+CD 7D 09    // CALL PARSE_HEX_WORD
+DA 96 00    // JC CMD_ERROR
 E5          // PUSH H
 3A 56 20    // LDA VAR_BP_ACTIVE
 B7          // ORA A
-CA 4A 05    // JZ INJECT_NEW
+CA 6A 05    // JZ INJECT_NEW
 2A 57 20    // LHLD VAR_BP_ADDR
 EB          // XCHG
 21 59 20    // LXI H, VAR_BP_BYTES
@@ -754,19 +762,19 @@ EB          // XCHG                ; DE = BP Addr
 32 56 20    // STA VAR_BP_ACTIVE
 3A 06 20    // LDA VAR_INPUT_BUF
 FE 53       // CPI 'S'
-CA 2F 01    // JZ GO_EXECUTE
-CD 1A 0A    // CALL NEW_LINE
+CA 38 01    // JZ GO_EXECUTE
+CD 3A 0A    // CALL NEW_LINE
 3E 42       // MVI A, 'B'
-CD F8 09    // CALL PRINT_CHAR
+CD 18 0A    // CALL PRINT_CHAR
 3E 50       // MVI A, 'P'
-CD F8 09    // CALL PRINT_CHAR
+CD 18 0A    // CALL PRINT_CHAR
 3E 2B       // MVI A, '+'
-CD F8 09    // CALL PRINT_CHAR
-CD 1A 0A    // CALL NEW_LINE
-C3 4D 00    // JMP MAIN_LOOP
+CD 18 0A    // CALL PRINT_CHAR
+CD 3A 0A    // CALL NEW_LINE
+C3 56 00    // JMP MAIN_LOOP
 3A 56 20    // LDA VAR_BP_ACTIVE
 B7          // ORA A
-CA 4D 00    // JZ MAIN_LOOP        ; Was not active
+CA 56 00    // JZ MAIN_LOOP        ; Was not active
 2A 57 20    // LHLD VAR_BP_ADDR
 EB          // XCHG
 21 59 20    // LXI H, VAR_BP_BYTES
@@ -782,15 +790,15 @@ EB          // XCHG
 12          // STAX D
 AF          // XRA A
 32 56 20    // STA VAR_BP_ACTIVE
-CD 1A 0A    // CALL NEW_LINE
+CD 3A 0A    // CALL NEW_LINE
 3E 42       // MVI A, 'B'
-CD F8 09    // CALL PRINT_CHAR
+CD 18 0A    // CALL PRINT_CHAR
 3E 50       // MVI A, 'P'
-CD F8 09    // CALL PRINT_CHAR
+CD 18 0A    // CALL PRINT_CHAR
 3E 2D       // MVI A, '-'
-CD F8 09    // CALL PRINT_CHAR
-CD 1A 0A    // CALL NEW_LINE
-C3 4D 00    // JMP MAIN_LOOP
+CD 18 0A    // CALL PRINT_CHAR
+CD 3A 0A    // CALL NEW_LINE
+C3 56 00    // JMP MAIN_LOOP
 22 50 20    // SHLD VAR_REGS + 6   ; Save User HL
 E1          // POP H               ; Pop Return Address (BP_ADDR + 3)
 2B          // DCX H               ; -1
@@ -812,7 +820,7 @@ E1          // POP H
 31 FF 3F    // LXI SP, 0x3FFF      ; Switch to Monitor Stack
 3A 56 20    // LDA VAR_BP_ACTIVE
 B7          // ORA A
-CA FF 05    // JZ BP_DONE
+CA 1F 06    // JZ BP_DONE
 2A 57 20    // LHLD VAR_BP_ADDR
 EB          // XCHG
 21 59 20    // LXI H, VAR_BP_BYTES
@@ -828,28 +836,28 @@ EB          // XCHG
 12          // STAX D
 AF          // XRA A
 32 56 20    // STA VAR_BP_ACTIVE
-CD 1A 0A    // CALL NEW_LINE
+CD 3A 0A    // CALL NEW_LINE
 3E 5B       // MVI A, '['
-CD F8 09    // CALL PRINT_CHAR
+CD 18 0A    // CALL PRINT_CHAR
 3E 42       // MVI A, 'B'
-CD F8 09    // CALL PRINT_CHAR
+CD 18 0A    // CALL PRINT_CHAR
 3E 50       // MVI A, 'P'
-CD F8 09    // CALL PRINT_CHAR
+CD 18 0A    // CALL PRINT_CHAR
 3E 5D       // MVI A, ']'
-CD F8 09    // CALL PRINT_CHAR
-CD 17 09    // CALL PRINT_SPACE
-21 F8 0A    // LXI H, REG_NAMES
+CD 18 0A    // CALL PRINT_CHAR
+CD 37 09    // CALL PRINT_SPACE
+21 18 0B    // LXI H, REG_NAMES
 11 4A 20    // LXI D, VAR_REGS
 7E          // MOV A, M
 B7          // ORA A
-CA 46 06    // JZ BP_REG_DONE
-CD F8 09    // CALL PRINT_CHAR     ; Print first letter (e.g., 'A')
+CA 66 06    // JZ BP_REG_DONE
+CD 18 0A    // CALL PRINT_CHAR     ; Print first letter (e.g., 'A')
 23          // INX H
 7E          // MOV A, M
-CD F8 09    // CALL PRINT_CHAR     ; Print second letter (e.g., 'F')
+CD 18 0A    // CALL PRINT_CHAR     ; Print second letter (e.g., 'F')
 23          // INX H
 3E 3D       // MVI A, '='
-CD F8 09    // CALL PRINT_CHAR
+CD 18 0A    // CALL PRINT_CHAR
 1A          // LDAX D              ; Load Low Byte
 4F          // MOV C, A
 13          // INX D
@@ -857,298 +865,298 @@ CD F8 09    // CALL PRINT_CHAR
 47          // MOV B, A
 13          // INX D               ; Point to next register pair
 78          // MOV A, B
-CD 1F 09    // CALL PRINT_HEX_BYTE ; Print High Byte
+CD 3F 09    // CALL PRINT_HEX_BYTE ; Print High Byte
 79          // MOV A, C
-CD 1F 09    // CALL PRINT_HEX_BYTE ; Print Low Byte
-CD 17 09    // CALL PRINT_SPACE
-C3 1F 06    // JMP BP_REG_LOOP
+CD 3F 09    // CALL PRINT_HEX_BYTE ; Print Low Byte
+CD 37 09    // CALL PRINT_SPACE
+C3 3F 06    // JMP BP_REG_LOOP
 3E 46       // MVI A, 'F'
-CD F8 09    // CALL PRINT_CHAR
+CD 18 0A    // CALL PRINT_CHAR
 3E 3A       // MVI A, ':'
-CD F8 09    // CALL PRINT_CHAR
-CD 17 09    // CALL PRINT_SPACE
+CD 18 0A    // CALL PRINT_CHAR
+CD 37 09    // CALL PRINT_SPACE
 3A 4A 20    // LDA VAR_REGS + 0  ; Load the F register (Low byte of AF)
 47          // MOV B, A
 0E 53       // MVI C, 'S'
 16 08       // MVI D, 0x08       ; Mask for Sign Flag (Bit 3)
-CD 8C 06    // CALL PRINT_FLAG
+CD AC 06    // CALL PRINT_FLAG
 0E 5A       // MVI C, 'Z'
 16 01       // MVI D, 0x01       ; Mask for Zero Flag (Bit 0)
-CD 8C 06    // CALL PRINT_FLAG
+CD AC 06    // CALL PRINT_FLAG
 0E 50       // MVI C, 'P'
 16 04       // MVI D, 0x04       ; Mask for Parity Flag (Bit 2)
-CD 8C 06    // CALL PRINT_FLAG
+CD AC 06    // CALL PRINT_FLAG
 0E 43       // MVI C, 'C'
 16 02       // MVI D, 0x02       ; Mask for Carry Flag (Bit 1)
-CD 8C 06    // CALL PRINT_FLAG
-CD 1A 0A    // CALL NEW_LINE
+CD AC 06    // CALL PRINT_FLAG
+CD 3A 0A    // CALL NEW_LINE
 3E 3D       // MVI A, '='
-CD F8 09    // CALL PRINT_CHAR
+CD 18 0A    // CALL PRINT_CHAR
 3E 3E       // MVI A, '>'
-CD F8 09    // CALL PRINT_CHAR
-CD 17 09    // CALL PRINT_SPACE
+CD 18 0A    // CALL PRINT_CHAR
+CD 37 09    // CALL PRINT_SPACE
 2A 54 20    // LHLD VAR_REGS + 10
-CD D0 06    // CALL DISASM_PRINT_LINE
-C3 4D 00    // JMP MAIN_LOOP
+CD F0 06    // CALL DISASM_PRINT_LINE
+C3 56 00    // JMP MAIN_LOOP
 79          // MOV A, C
-CD F8 09    // CALL PRINT_CHAR
+CD 18 0A    // CALL PRINT_CHAR
 3E 3D       // MVI A, '='
-CD F8 09    // CALL PRINT_CHAR
+CD 18 0A    // CALL PRINT_CHAR
 78          // MOV A, B
 A2          // ANA D
 3E 30       // MVI A, '0'
-CA 9E 06    // JZ PF_ZERO
+CA BE 06    // JZ PF_ZERO
 3E 31       // MVI A, '1'
-CD F8 09    // CALL PRINT_CHAR
-CD 17 09    // CALL PRINT_SPACE
+CD 18 0A    // CALL PRINT_CHAR
+CD 37 09    // CALL PRINT_SPACE
 C9          // RET
 3A 05 20    // LDA VAR_INPUT_LEN
 FE 01       // CPI 1
-CA BC 06    // JZ U_PROMPT_LOOP    ; If just "U" was typed, continue from the last address
+CA DC 06    // JZ U_PROMPT_LOOP    ; If just "U" was typed, continue from the last address
 21 07 20    // LXI H, VAR_INPUT_BUF + 1
-CD 3D 09    // CALL SKIP_SPACES
-CD 5D 09    // CALL PARSE_HEX_WORD
-DA 8D 00    // JC CMD_ERROR        ; Invalid hex characters
+CD 5D 09    // CALL SKIP_SPACES
+CD 7D 09    // CALL PARSE_HEX_WORD
+DA 96 00    // JC CMD_ERROR        ; Invalid hex characters
 22 46 20    // SHLD VAR_MODIFY_PTR
 0E 10       // MVI C, 16           ; Disassemble 16 lines per command
 C5          // PUSH B              ; Save line counter (C)
 2A 46 20    // LHLD VAR_MODIFY_PTR
-CD D0 06    // CALL DISASM_PRINT_LINE
+CD F0 06    // CALL DISASM_PRINT_LINE
 22 46 20    // SHLD VAR_MODIFY_PTR
 C1          // POP B               ; Restore line counter
 0D          // DCR C
-C2 BE 06    // JNZ U_LINE_LOOP
-C3 4D 00    // JMP MAIN_LOOP       ; Back to prompt
+C2 DE 06    // JNZ U_LINE_LOOP
+C3 56 00    // JMP MAIN_LOOP       ; Back to prompt
 22 5C 20    // SHLD VAR_DISASM_PTR
 7C          // MOV A, H
-CD 1F 09    // CALL PRINT_HEX_BYTE
+CD 3F 09    // CALL PRINT_HEX_BYTE
 7D          // MOV A, L
-CD 1F 09    // CALL PRINT_HEX_BYTE
+CD 3F 09    // CALL PRINT_HEX_BYTE
 3E 3A       // MVI A, ':'
-CD F8 09    // CALL PRINT_CHAR
-CD 17 09    // CALL PRINT_SPACE
+CD 18 0A    // CALL PRINT_CHAR
+CD 37 09    // CALL PRINT_SPACE
 46          // MOV B, M            ; B = opcode
-21 25 0B    // LXI H, DISASM_MAP
+21 45 0B    // LXI H, DISASM_MAP
 58          // MOV E, B
 16 00       // MVI D, 0
 19          // DAD D
 7E          // MOV A, M            ; A = Template ID
-CD E2 07    // CALL GET_TEMPLATE   ; HL = Template String
+CD 02 08    // CALL GET_TEMPLATE   ; HL = Template String
 E5          // PUSH H              ; Save Template String pointer
 16 01       // MVI D, 1            ; Default Length = 1
 7E          // MOV A, M
 B7          // ORA A
-CA 0C 07    // JZ DPL_LEN_DONE
+CA 2C 07    // JZ DPL_LEN_DONE
 23          // INX H
 FE 86       // CPI 0x86            ; Token 0x86 means 8-bit operand (Length = 2)
-C2 02 07    // JNZ DPL_LEN_NOT_2
+C2 22 07    // JNZ DPL_LEN_NOT_2
 16 02       // MVI D, 2
-C3 F2 06    // JMP DPL_LEN_LOOP
+C3 12 07    // JMP DPL_LEN_LOOP
 FE 87       // CPI 0x87            ; Token 0x87 means 16-bit operand (Length = 3)
-C2 F2 06    // JNZ DPL_LEN_LOOP
+C2 12 07    // JNZ DPL_LEN_LOOP
 16 03       // MVI D, 3
-C3 F2 06    // JMP DPL_LEN_LOOP
+C3 12 07    // JMP DPL_LEN_LOOP
 2A 5C 20    // LHLD VAR_DISASM_PTR
 5A          // MOV E, D            ; E = length
 3E 03       // MVI A, 3            ; Max padding columns
 93          // SUB E
 47          // MOV B, A            ; B = padding required
 7E          // MOV A, M
-CD 1F 09    // CALL PRINT_HEX_BYTE
-CD 17 09    // CALL PRINT_SPACE
+CD 3F 09    // CALL PRINT_HEX_BYTE
+CD 37 09    // CALL PRINT_SPACE
 23          // INX H
 1D          // DCR E
-C2 14 07    // JNZ DPL_RAW_LOOP
+C2 34 07    // JNZ DPL_RAW_LOOP
 78          // MOV A, B
 B7          // ORA A
-CA 32 07    // JZ DPL_PAD_DONE
-CD 17 09    // CALL PRINT_SPACE
-CD 17 09    // CALL PRINT_SPACE
-CD 17 09    // CALL PRINT_SPACE
+CA 52 07    // JZ DPL_PAD_DONE
+CD 37 09    // CALL PRINT_SPACE
+CD 37 09    // CALL PRINT_SPACE
+CD 37 09    // CALL PRINT_SPACE
 05          // DCR B
-C2 25 07    // JNZ DPL_PAD_LOOP
-CD 17 09    // CALL PRINT_SPACE
+C2 45 07    // JNZ DPL_PAD_LOOP
+CD 37 09    // CALL PRINT_SPACE
 D1          // POP D               ; D = Template String
 2A 5C 20    // LHLD VAR_DISASM_PTR
 4E          // MOV C, M            ; C = opcode (for extracting tokens)
 23          // INX H               ; HL = next byte (for extracting d8/d16)
 1A          // LDAX D
 B7          // ORA A
-CA DE 07    // JZ DPL_LINE_DONE
+CA FE 07    // JZ DPL_LINE_DONE
 13          // INX D
 FE 80       // CPI 0x80
-DA 6E 07    // JC DPL_PRINT_LITERAL
+DA 8E 07    // JC DPL_PRINT_LITERAL
 FE 81       // CPI 0x81
-CA 74 07    // JZ DPL_TOK_R1
+CA 94 07    // JZ DPL_TOK_R1
 FE 82       // CPI 0x82
-CA 80 07    // JZ DPL_TOK_R2
+CA A0 07    // JZ DPL_TOK_R2
 FE 83       // CPI 0x83
-CA 89 07    // JZ DPL_TOK_RP
+CA A9 07    // JZ DPL_TOK_RP
 FE 84       // CPI 0x84
-CA 96 07    // JZ DPL_TOK_RP2
+CA B6 07    // JZ DPL_TOK_RP2
 FE 85       // CPI 0x85
-CA A3 07    // JZ DPL_TOK_CC
+CA C3 07    // JZ DPL_TOK_CC
 FE 86       // CPI 0x86
-CA AF 07    // JZ DPL_TOK_D8
+CA CF 07    // JZ DPL_TOK_D8
 FE 87       // CPI 0x87
-CA BC 07    // JZ DPL_TOK_D16
+CA DC 07    // JZ DPL_TOK_D16
 FE 88       // CPI 0x88
-CA D0 07    // JZ DPL_TOK_RST
-CD F8 09    // CALL PRINT_CHAR
-C3 3B 07    // JMP DPL_PARSE_LOOP
+CA F0 07    // JZ DPL_TOK_RST
+CD 18 0A    // CALL PRINT_CHAR
+C3 5B 07    // JMP DPL_PARSE_LOOP
 79          // MOV A, C
 0F          // RRC
 0F          // RRC
 0F          // RRC
 E6 07       // ANI 0x07
-CD F5 07    // CALL PRINT_REG_NAME
-C3 3B 07    // JMP DPL_PARSE_LOOP
+CD 15 08    // CALL PRINT_REG_NAME
+C3 5B 07    // JMP DPL_PARSE_LOOP
 79          // MOV A, C
 E6 07       // ANI 0x07
-CD F5 07    // CALL PRINT_REG_NAME
-C3 3B 07    // JMP DPL_PARSE_LOOP
+CD 15 08    // CALL PRINT_REG_NAME
+C3 5B 07    // JMP DPL_PARSE_LOOP
 79          // MOV A, C
 0F          // RRC
 0F          // RRC
 0F          // RRC
 0F          // RRC
 E6 03       // ANI 0x03
-CD 05 08    // CALL PRINT_RP_NAME
-C3 3B 07    // JMP DPL_PARSE_LOOP
+CD 25 08    // CALL PRINT_RP_NAME
+C3 5B 07    // JMP DPL_PARSE_LOOP
 79          // MOV A, C
 0F          // RRC
 0F          // RRC
 0F          // RRC
 0F          // RRC
 E6 03       // ANI 0x03
-CD 1F 08    // CALL PRINT_RP2_NAME
-C3 3B 07    // JMP DPL_PARSE_LOOP
+CD 3F 08    // CALL PRINT_RP2_NAME
+C3 5B 07    // JMP DPL_PARSE_LOOP
 79          // MOV A, C
 0F          // RRC
 0F          // RRC
 0F          // RRC
 E6 07       // ANI 0x07
-CD 3E 08    // CALL PRINT_CC_NAME
-C3 3B 07    // JMP DPL_PARSE_LOOP
+CD 5E 08    // CALL PRINT_CC_NAME
+C3 5B 07    // JMP DPL_PARSE_LOOP
 7E          // MOV A, M
-CD 1F 09    // CALL PRINT_HEX_BYTE
+CD 3F 09    // CALL PRINT_HEX_BYTE
 3E 48       // MVI A, 'H'
-CD F8 09    // CALL PRINT_CHAR
+CD 18 0A    // CALL PRINT_CHAR
 23          // INX H
-C3 3B 07    // JMP DPL_PARSE_LOOP
+C3 5B 07    // JMP DPL_PARSE_LOOP
 23          // INX H
 7E          // MOV A, M
-CD 1F 09    // CALL PRINT_HEX_BYTE
+CD 3F 09    // CALL PRINT_HEX_BYTE
 2B          // DCX H
 7E          // MOV A, M
-CD 1F 09    // CALL PRINT_HEX_BYTE
+CD 3F 09    // CALL PRINT_HEX_BYTE
 3E 48       // MVI A, 'H'
-CD F8 09    // CALL PRINT_CHAR
+CD 18 0A    // CALL PRINT_CHAR
 23          // INX H
 23          // INX H
-C3 3B 07    // JMP DPL_PARSE_LOOP
+C3 5B 07    // JMP DPL_PARSE_LOOP
 79          // MOV A, C
 0F          // RRC
 0F          // RRC
 0F          // RRC
 E6 07       // ANI 0x07
 C6 30       // ADI '0'
-CD F8 09    // CALL PRINT_CHAR
-C3 3B 07    // JMP DPL_PARSE_LOOP
-CD 1A 0A    // CALL NEW_LINE
+CD 18 0A    // CALL PRINT_CHAR
+C3 5B 07    // JMP DPL_PARSE_LOOP
+CD 3A 0A    // CALL NEW_LINE
 C9          // RET
-21 25 0C    // LXI H, TEMPLATES
+21 45 0C    // LXI H, TEMPLATES
 47          // MOV B, A
 B7          // ORA A
-CA F4 07    // JZ GT_DONE
+CA 14 08    // JZ GT_DONE
 7E          // MOV A, M
 23          // INX H
 B7          // ORA A
-C2 EA 07    // JNZ GT_LOOP
+C2 0A 08    // JNZ GT_LOOP
 05          // DCR B
-C2 EA 07    // JNZ GT_LOOP
+C2 0A 08    // JNZ GT_LOOP
 C9          // RET
 E5          // PUSH H
 D5          // PUSH D
-21 05 0B    // LXI H, DISASM_REG
+21 25 0B    // LXI H, DISASM_REG
 5F          // MOV E, A
 16 00       // MVI D, 0
 19          // DAD D
 7E          // MOV A, M
-CD F8 09    // CALL PRINT_CHAR
+CD 18 0A    // CALL PRINT_CHAR
 D1          // POP D
 E1          // POP H
 C9          // RET
 E5          // PUSH H
 D5          // PUSH D
-21 0D 0B    // LXI H, DISASM_RP
+21 2D 0B    // LXI H, DISASM_RP
 5F          // MOV E, A
 16 00       // MVI D, 0
 19          // DAD D
 7E          // MOV A, M
-CD F8 09    // CALL PRINT_CHAR
+CD 18 0A    // CALL PRINT_CHAR
 FE 53       // CPI 'S'
-C2 1C 08    // JNZ PRPN_DONE
+C2 3C 08    // JNZ PRPN_DONE
 3E 50       // MVI A, 'P'
-CD F8 09    // CALL PRINT_CHAR
+CD 18 0A    // CALL PRINT_CHAR
 D1          // POP D
 E1          // POP H
 C9          // RET
 E5          // PUSH H
 D5          // PUSH D
-21 11 0B    // LXI H, DISASM_RP2
+21 31 0B    // LXI H, DISASM_RP2
 5F          // MOV E, A
 16 00       // MVI D, 0
 19          // DAD D
 7E          // MOV A, M
-CD F8 09    // CALL PRINT_CHAR
+CD 18 0A    // CALL PRINT_CHAR
 FE 50       // CPI 'P'
-C2 3B 08    // JNZ PRP2_DONE
+C2 5B 08    // JNZ PRP2_DONE
 3E 53       // MVI A, 'S'
-CD F8 09    // CALL PRINT_CHAR
+CD 18 0A    // CALL PRINT_CHAR
 3E 57       // MVI A, 'W'
-CD F8 09    // CALL PRINT_CHAR
+CD 18 0A    // CALL PRINT_CHAR
 D1          // POP D
 E1          // POP H
 C9          // RET
 E5          // PUSH H
 D5          // PUSH D
-21 15 0B    // LXI H, DISASM_CC
+21 35 0B    // LXI H, DISASM_CC
 87          // ADD A          ; A = A * 2
 5F          // MOV E, A
 16 00       // MVI D, 0
 19          // DAD D
 7E          // MOV A, M
-CD F8 09    // CALL PRINT_CHAR
+CD 18 0A    // CALL PRINT_CHAR
 23          // INX H
 7E          // MOV A, M
 FE 20       // CPI ' '
-CA 56 08    // JZ PCCN_DONE
-CD F8 09    // CALL PRINT_CHAR
+CA 76 08    // JZ PCCN_DONE
+CD 18 0A    // CALL PRINT_CHAR
 D1          // POP D
 E1          // POP H
 C9          // RET
 DB 01       // IN 0x01
 E6 01       // ANI 0x01
-CA 65 08    // JZ RL_FLUSH_DONE
+CA 85 08    // JZ RL_FLUSH_DONE
 DB 00       // IN 0x00
-C3 59 08    // JMP RL_FLUSH
+C3 79 08    // JMP RL_FLUSH
 AF          // XRA A
 32 04 20    // STA VAR_KB_STATE
 32 05 20    // STA VAR_INPUT_LEN
-CD C3 08    // CALL GET_KEY        ; Wait for key, return ASCII in A
+CD E3 08    // CALL GET_KEY        ; Wait for key, return ASCII in A
 FE 0D       // CPI 0x0D            ; Is it Enter?
-CA B3 08    // JZ RL_ENTER
+CA D3 08    // JZ RL_ENTER
 FE 08       // CPI 0x08            ; Is it Backspace?
-CA A2 08    // JZ RL_BS
+CA C2 08    // JZ RL_BS
 FE 20       // CPI 0x20            ; Is it Printable? (< 0x20 are control chars)
-DA 6C 08    // JC RL_LOOP
+DA 8C 08    // JC RL_LOOP
 FE 7F       // CPI 0x7F            ; DEL or higher are non-printable
-D2 6C 08    // JNC RL_LOOP
+D2 8C 08    // JNC RL_LOOP
 47          // MOV B, A            ; Save character
 3A 05 20    // LDA VAR_INPUT_LEN
 FE 3C       // CPI 60
-D2 6C 08    // JNC RL_LOOP         ; If full, ignore
+D2 8C 08    // JNC RL_LOOP         ; If full, ignore
 5F          // MOV E, A            ; E = length
 16 00       // MVI D, 0            ; DE = length
 21 06 20    // LXI H, VAR_INPUT_BUF
@@ -1158,67 +1166,67 @@ D2 6C 08    // JNC RL_LOOP         ; If full, ignore
 3C          // INR A
 32 05 20    // STA VAR_INPUT_LEN
 78          // MOV A, B
-CD F8 09    // CALL PRINT_CHAR
-C3 6C 08    // JMP RL_LOOP
+CD 18 0A    // CALL PRINT_CHAR
+C3 8C 08    // JMP RL_LOOP
 3A 05 20    // LDA VAR_INPUT_LEN
 B7          // ORA A               ; Is length 0?
-CA 6C 08    // JZ RL_LOOP          ; Yes, do nothing
+CA 8C 08    // JZ RL_LOOP          ; Yes, do nothing
 3D          // DCR A               ; Decrease length
 32 05 20    // STA VAR_INPUT_LEN
-CD A5 09    // CALL BACKSPACE      ; Move cursor back and erase
-C3 6C 08    // JMP RL_LOOP
+CD C5 09    // CALL BACKSPACE      ; Move cursor back and erase
+C3 8C 08    // JMP RL_LOOP
 3A 05 20    // LDA VAR_INPUT_LEN
 5F          // MOV E, A
 16 00       // MVI D, 0
 21 06 20    // LXI H, VAR_INPUT_BUF
 19          // DAD D
 36 00       // MVI M, 0
-CD 1A 0A    // CALL NEW_LINE
+CD 3A 0A    // CALL NEW_LINE
 C9          // RET
 DB 01       // IN 0x01
 E6 01       // ANI 0x01
-CA C3 08    // JZ GK_WAIT
+CA E3 08    // JZ GK_WAIT
 DB 00       // IN 0x00
 FE E0       // CPI 0xE0            ; Ignore extended prefix
-CA C3 08    // JZ GK_WAIT
+CA E3 08    // JZ GK_WAIT
 FE F0       // CPI 0xF0            ; Is it a Break code?
-C2 DE 08    // JNZ GK_CHECK_STATE
+C2 FE 08    // JNZ GK_CHECK_STATE
 3E 01       // MVI A, 1
 32 04 20    // STA VAR_KB_STATE
-C3 C3 08    // JMP GK_WAIT
+C3 E3 08    // JMP GK_WAIT
 47          // MOV B, A            ; Save scan code
 3A 04 20    // LDA VAR_KB_STATE
 B7          // ORA A
-CA EE 08    // JZ GK_DECODE        ; If state is 0, normal MAKE code
+CA 0E 09    // JZ GK_DECODE        ; If state is 0, normal MAKE code
 3E 00       // MVI A, 0
 32 04 20    // STA VAR_KB_STATE
-C3 C3 08    // JMP GK_WAIT
+C3 E3 08    // JMP GK_WAIT
 78          // MOV A, B            ; Restore scan code
 FE 80       // CPI 0x80            ; Ensure it's < 128 to prevent table overflow
-D2 C3 08    // JNC GK_WAIT
-21 78 0A    // LXI H, SCAN_TO_ASCII
+D2 E3 08    // JNC GK_WAIT
+21 98 0A    // LXI H, SCAN_TO_ASCII
 5F          // MOV E, A
 16 00       // MVI D, 0
 19          // DAD D               ; HL = SCAN_TO_ASCII + Scan Code
 7E          // MOV A, M            ; Load ASCII value
 B7          // ORA A               ; Is it mapped to 0 (unknown)?
-CA C3 08    // JZ GK_WAIT
+CA E3 08    // JZ GK_WAIT
 C9          // RET                 ; Valid ASCII in A!
 DB 03       // IN 0x03
 E6 02       // ANI 0x02            ; Check if RX_READY (Bit 1) is high
-CA 01 09    // JZ UART_RECV_BYTE   ; Block until a byte arrives
+CA 21 09    // JZ UART_RECV_BYTE   ; Block until a byte arrives
 DB 02       // IN 0x02             ; Read byte (this automatically clears the ready flag in hardware)
 C9          // RET
 F5          // PUSH PSW
 DB 03       // IN 0x03
 E6 01       // ANI 0x01            ; Check if TX_BUSY (Bit 0) is high
-C2 0C 09    // JNZ USB_WAIT        ; Block while UART is transmitting
+C2 2C 09    // JNZ USB_WAIT        ; Block while UART is transmitting
 F1          // POP PSW
 D3 02       // OUT 0x02            ; Transmit byte
 C9          // RET
 F5          // PUSH PSW
 3E 20       // MVI A, ' '
-CD F8 09    // CALL PRINT_CHAR
+CD 18 0A    // CALL PRINT_CHAR
 F1          // POP PSW
 C9          // RET
 F5          // PUSH PSW
@@ -1226,27 +1234,27 @@ F5          // PUSH PSW
 0F          // RRC
 0F          // RRC
 0F          // RRC
-CD 2C 09    // CALL PRINT_HEX_NIBBLE
+CD 4C 09    // CALL PRINT_HEX_NIBBLE
 F1          // POP PSW
-CD 2C 09    // CALL PRINT_HEX_NIBBLE
+CD 4C 09    // CALL PRINT_HEX_NIBBLE
 C9          // RET
 F5          // PUSH PSW
 E6 0F       // ANI 0x0F
 FE 0A       // CPI 10
-DA 36 09    // JC PHN_DIGIT
+DA 56 09    // JC PHN_DIGIT
 C6 07       // ADI 7           ; Offset for 'A'-'F'
 C6 30       // ADI 0x30        ; ASCII '0'
-CD F8 09    // CALL PRINT_CHAR
+CD 18 0A    // CALL PRINT_CHAR
 F1          // POP PSW
 C9          // RET
 7E          // MOV A, M
 FE 20       // CPI ' '
 C0          // RNZ
 23          // INX H
-C3 3D 09    // JMP SKIP_SPACES
+C3 5D 09    // JMP SKIP_SPACES
 7E          // MOV A, M
-CD 87 09    // CALL PARSE_HEX_NIBBLE
-DA 5B 09    // JC PHB_ERROR
+CD A7 09    // CALL PARSE_HEX_NIBBLE
+DA 7B 09    // JC PHB_ERROR
 07          // RLC
 07          // RLC
 07          // RLC
@@ -1254,8 +1262,8 @@ DA 5B 09    // JC PHB_ERROR
 47          // MOV B, A
 23          // INX H
 7E          // MOV A, M
-CD 87 09    // CALL PARSE_HEX_NIBBLE
-DA 5B 09    // JC PHB_ERROR
+CD A7 09    // CALL PARSE_HEX_NIBBLE
+DA 7B 09    // JC PHB_ERROR
 B0          // ORA B
 C9          // RET
 37          // STC
@@ -1266,8 +1274,8 @@ D5          // PUSH D
 1E 00       // MVI E, 0
 06 04       // MVI B, 4        ; 4 digits
 7E          // MOV A, M
-CD 87 09    // CALL PARSE_HEX_NIBBLE
-DA 83 09    // JC PHW_ERROR
+CD A7 09    // CALL PARSE_HEX_NIBBLE
+DA A3 09    // JC PHW_ERROR
 E5          // PUSH H          ; Save pointer
 62          // MOV H, D        ; Shift DE left by 4
 6B          // MOV L, E
@@ -1282,7 +1290,7 @@ B3          // ORA E           ; Add new nibble to E
 5F          // MOV E, A
 23          // INX H           ; Next char
 05          // DCR B
-C2 65 09    // JNZ PHW_LOOP
+C2 85 09    // JNZ PHW_LOOP
 62          // MOV H, D        ; Move result to HL
 6B          // MOV L, E
 B7          // ORA A           ; Clear carry (success)
@@ -1294,13 +1302,13 @@ D1          // POP D
 C1          // POP B
 C9          // RET
 FE 30       // CPI '0'
-DA A3 09    // JC PHN_ERR
+DA C3 09    // JC PHN_ERR
 FE 3A       // CPI '9' + 1
-DA 9F 09    // JC PHN_NUM
+DA BF 09    // JC PHN_NUM
 FE 41       // CPI 'A'
-DA A3 09    // JC PHN_ERR
+DA C3 09    // JC PHN_ERR
 FE 47       // CPI 'F' + 1
-D2 A3 09    // JNC PHN_ERR
+D2 C3 09    // JNC PHN_ERR
 D6 37       // SUI 55          ; 'A' (65) - 55 = 10
 B7          // ORA A
 C9          // RET
@@ -1313,23 +1321,23 @@ C9          // RET
 47          // MOV B, A
 3A 00 20    // LDA VAR_CURSOR_X
 B0          // ORA B
-CA D6 09    // JZ BS_DONE
+CA F6 09    // JZ BS_DONE
 3A 00 20    // LDA VAR_CURSOR_X
 B7          // ORA A
-C2 C6 09    // JNZ BS_DEC_X
+C2 E6 09    // JNZ BS_DEC_X
 3E 3F       // MVI A, 63
 32 00 20    // STA VAR_CURSOR_X
 3A 01 20    // LDA VAR_CURSOR_Y
 3D          // DCR A
 32 01 20    // STA VAR_CURSOR_Y
-C3 CA 09    // JMP BS_UPDATE_PTR
+C3 EA 09    // JMP BS_UPDATE_PTR
 3D          // DCR A
 32 00 20    // STA VAR_CURSOR_X
 2A 02 20    // LHLD VAR_CURSOR_PTR
 2B          // DCX H
 22 02 20    // SHLD VAR_CURSOR_PTR
 36 20       // MVI M, 0x20
-CD 69 0A    // CALL SYNC_CURSOR
+CD 89 0A    // CALL SYNC_CURSOR
 C9          // RET
 21 00 A0    // LXI H, 0xA000
 01 80 07    // LXI B, 1920         ; 64 columns * 30 rows = 1920 bytes
@@ -1338,13 +1346,13 @@ C9          // RET
 0B          // DCX B
 78          // MOV A, B
 B1          // ORA C
-C2 DD 09    // JNZ CS_LOOP
+C2 FD 09    // JNZ CS_LOOP
 3E 00       // MVI A, 0
 32 00 20    // STA VAR_CURSOR_X
 32 01 20    // STA VAR_CURSOR_Y
 21 00 A0    // LXI H, 0xA000
 22 02 20    // SHLD VAR_CURSOR_PTR
-CD 69 0A    // CALL SYNC_CURSOR
+CD 89 0A    // CALL SYNC_CURSOR
 C9          // RET
 E5          // PUSH H
 F5          // PUSH PSW
@@ -1355,11 +1363,11 @@ F5          // PUSH PSW
 3A 00 20    // LDA VAR_CURSOR_X
 3C          // INR A
 FE 40       // CPI 64              ; Check if we hit the end of the line (64 cols)
-DA 11 0A    // JC PC_NO_WRAP
-CD 1A 0A    // CALL NEW_LINE
-C3 17 0A    // JMP PC_DONE
+DA 31 0A    // JC PC_NO_WRAP
+CD 3A 0A    // CALL NEW_LINE
+C3 37 0A    // JMP PC_DONE
 32 00 20    // STA VAR_CURSOR_X
-CD 69 0A    // CALL SYNC_CURSOR
+CD 89 0A    // CALL SYNC_CURSOR
 F1          // POP PSW
 E1          // POP H
 C9          // RET
@@ -1372,7 +1380,7 @@ F5          // PUSH PSW
 3A 01 20    // LDA VAR_CURSOR_Y
 3C          // INR A
 FE 1E       // CPI 30              ; Check if we hit the bottom of the screen
-DA 4E 0A    // JC NL_NO_WRAP
+DA 6E 0A    // JC NL_NO_WRAP
 21 40 A0    // LXI H, 0xA040       ; Source (Row 1)
 11 00 A0    // LXI D, 0xA000       ; Destination (Row 0)
 01 40 07    // LXI B, 1856         ; 64 * 29 = 1856 bytes
@@ -1383,7 +1391,7 @@ DA 4E 0A    // JC NL_NO_WRAP
 0B          // DCX B
 78          // MOV A, B
 B1          // ORA C
-C2 35 0A    // JNZ NL_SCROLL_LOOP
+C2 55 0A    // JNZ NL_SCROLL_LOOP
 01 40 00    // LXI B, 64           ; 64 columns
 3E 20       // MVI A, 0x20         ; Space character
 12          // STAX D
@@ -1391,7 +1399,7 @@ C2 35 0A    // JNZ NL_SCROLL_LOOP
 0B          // DCX B
 78          // MOV A, B
 B1          // ORA C
-C2 42 0A    // JNZ NL_CLEAR_LOOP
+C2 62 0A    // JNZ NL_CLEAR_LOOP
 3E 1D       // MVI A, 29           ; Keep cursor on row 29
 32 01 20    // STA VAR_CURSOR_Y
 6F          // MOV L, A
@@ -1405,7 +1413,7 @@ C2 42 0A    // JNZ NL_CLEAR_LOOP
 11 00 A0    // LXI D, 0xA000
 19          // DAD D               ; HL = 0xA000 + Y * 64
 22 02 20    // SHLD VAR_CURSOR_PTR
-CD 69 0A    // CALL SYNC_CURSOR
+CD 89 0A    // CALL SYNC_CURSOR
 F1          // POP PSW
 C1          // POP B
 D1          // POP D
@@ -1445,7 +1453,7 @@ C9          // RET
 11 11 11 11 11 11 11 11 12 12 12 12 12 12 12 12 // DB 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12, 0x12
 29 2C 25 24 27 2B 13 2A 29 28 25 39 27 26 14 2A // DB 0x29, 0x2C, 0x25, 0x24, 0x27, 0x2B, 0x13, 0x2A, 0x29, 0x28, 0x25, 0x39, 0x27, 0x26, 0x14, 0x2A
 29 2C 25 32 27 2B 15 2A 29 39 25 31 27 39 16 2A // DB 0x29, 0x2C, 0x25, 0x32, 0x27, 0x2B, 0x15, 0x2A, 0x29, 0x39, 0x25, 0x31, 0x27, 0x39, 0x16, 0x2A
-29 2C 25 34 27 2B 17 2A 29 36 25 33 27 39 18 2A // DB 0x29, 0x2C, 0x25, 0x34, 0x27, 0x2B, 0x17, 0x2A, 0x29, 0x36, 0x25, 0x33, 0x27, 0x39, 0x18, 0x2A
+29 2C 25 34 27 2B 17 2A 29 36 25 33 27 3A 18 2A // DB 0x29, 0x2C, 0x25, 0x34, 0x27, 0x2B, 0x17, 0x2A, 0x29, 0x36, 0x25, 0x33, 0x27, 0x3A, 0x18, 0x2A
 29 2C 25 37 27 2B 19 2A 29 35 25 38 27 39 1A 2A // DB 0x29, 0x2C, 0x25, 0x37, 0x27, 0x2B, 0x19, 0x2A, 0x29, 0x35, 0x25, 0x38, 0x27, 0x39, 0x1A, 0x2A
 4E 4F 50 00 // DB "NOP",0                          ; 00
 4D 4F 56 20 81 2C 82 00 // DB "MOV ", 0x81, ",", 0x82, 0       ; 01
@@ -1505,3 +1513,4 @@ C9          // RET
 44 49 00    // DB "DI", 0                          ; 37
 45 49 00    // DB "EI", 0                          ; 38
 3F 3F 3F 00 // DB "???", 0                         ; 39
+4D 55 4C 20 42 00 // DB "MUL B", 0                       ; 3A
